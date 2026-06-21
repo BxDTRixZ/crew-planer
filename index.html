@@ -208,6 +208,40 @@
   .add-expense:active { transform:scale(0.97); }
   .add-expense svg { width:18px; height:18px; }
 
+  /* KOSTEN -- echte Live-Liste (Ticket 0033, Teil 1) */
+  .expense.clickable { cursor:pointer; }
+  .expense.clickable:active { background:var(--card-2); }
+  .ex-split { font-size:12px; color:var(--label-2); margin-top:1px; }
+  .mod-empty { color:var(--label-2); font-size:14px; text-align:center; padding:24px 22px; line-height:1.5; }
+  .bal-row { display:flex; align-items:center; gap:12px; padding:13px 16px; position:relative; }
+  .bal-row + .bal-row::before { content:""; position:absolute; top:0; left:60px; right:0; height:0.5px; background:var(--separator); }
+  .bal-row .bal-name { flex:1; min-width:0; font-size:15px; letter-spacing:-0.2px; color:var(--label); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bal-row .bal-val { font-size:16px; font-weight:600; letter-spacing:-0.3px; flex-shrink:0; }
+  .bal-row .bal-val.pos { color:var(--green); }
+  .bal-row .bal-val.neg { color:var(--red); }
+  .bal-row .bal-val.zero { color:var(--label-2); }
+  /* Ausgabe-Formular-Overlay (Ticket 0033, Teil 1) */
+  .kexp-box { max-width:360px; text-align:left; max-height:84vh; overflow-y:auto; }
+  .kexp-field { margin-top:12px; }
+  .kexp-in { width:100%; box-sizing:border-box; background:var(--card-2); border:0.5px solid var(--card-border); border-radius:11px; color:var(--label); font-size:16px; padding:12px 13px; outline:none; font-family:inherit; letter-spacing:-0.3px; }
+  .kexp-in::placeholder { color:#5A5A5E; }
+  .kexp-sub-label { font-size:13px; font-weight:600; color:var(--label-2); margin:16px 0 7px; letter-spacing:-0.1px; }
+  .kexp-split { display:flex; flex-direction:column; gap:2px; max-height:30vh; overflow:auto; }
+  .kexp-opt { display:flex; align-items:center; gap:11px; padding:9px 6px; background:none; border:none; cursor:pointer; color:var(--label); font-size:15px; border-radius:9px; text-align:left; width:100%; }
+  .kexp-opt:active { background:var(--card-2); }
+  .kexp-opt .kexp-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .kexp-opt .kexp-check { width:22px; height:22px; border-radius:7px; border:1.5px solid var(--separator); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:transparent; }
+  .kexp-opt.on .kexp-check { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .kexp-opt .kexp-check svg { width:14px; height:14px; }
+  .kexp-actions { margin-top:18px; }
+  .kexp-save { background:var(--accent); color:#fff; }
+  .kexp-delete { display:block; width:100%; margin-top:10px; padding:11px; border-radius:var(--r-pill); background:none; border:none; color:var(--red); font-size:15px; font-weight:600; cursor:pointer; }
+
+  /* TREFFPUNKT -- echter gemeinsamer Treffpunkt (Ticket 0033, Teil 2) */
+  .tp-empty { color:var(--label-2); font-size:14px; text-align:center; padding:8px 22px 18px; line-height:1.5; }
+  .tp-save { display:flex; align-items:center; justify-content:center; gap:8px; margin:16px 18px 0; padding:14px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; width:calc(100% - 36px); }
+  .tp-save:active { transform:scale(0.97); }
+
   /* CREATE SHEET */
   .backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.3s ease; z-index:250; }
   .backdrop.open { opacity:1; pointer-events:auto; }
@@ -453,7 +487,18 @@
   /* Abwesenheit (Ticket 0008): eigene = roter Tag; fremde = roter Punkt oben rechts */
   .cal-day.av-other::after { content:""; position:absolute; top:6px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--red); }
   .cal-day.av-me { background:var(--red); color:#fff; font-weight:600; }
-  .cal-day.av-me.av-other::after { background:#fff; }   /* eigen+fremd: weisser Punkt auf rotem Tag */
+  /* "hat Zeit" / verfuegbar (Ticket 0033, Teil 4): eigener Tag gruen, fremd = gruener Eck-Punkt */
+  .cal-day.free-me { background:var(--green); color:#fff; font-weight:600; }
+  .cal-day.free-other::after { content:""; position:absolute; top:6px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--green); }
+  /* eigener (farbiger) Tag + fremder Punkt -> weisser Punkt (jede Kombination) */
+  .cal-day.av-me.av-other::after, .cal-day.av-me.free-other::after,
+  .cal-day.free-me.av-other::after, .cal-day.free-me.free-other::after { background:#fff; }
+  /* Kalender-Legende (Ticket 0033, Teil 4) */
+  .cal-legend { display:flex; flex-wrap:wrap; gap:14px; justify-content:center; padding:14px 16px 4px; }
+  .cal-legend .cl-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--label-2); letter-spacing:-0.1px; }
+  .cal-legend .cl-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+  .cal-legend .cl-dot.weg { background:var(--red); }
+  .cal-legend .cl-dot.frei { background:var(--green); }
   .file-empty { padding:16px; text-align:center; color:var(--label-2); font-size:14px; letter-spacing:-0.1px; }
   .dp-day.start, .dp-day.end, .dp-day.solo { background:var(--accent); color:#fff; font-weight:600; }
   .dp-day.between { background:var(--accent-tint); border-radius:0; color:var(--accent-text); }
@@ -647,6 +692,11 @@
         </div>
         <div class="cal-dow"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
         <div class="cal-grid" id="cal-grid"></div>
+        <!-- Zustands-Legende (Ticket 0033, Teil 4): Tag-Klick zykliert nichts -> hat Zeit -> weg -->
+        <div class="cal-legend">
+          <div class="cl-item"><span class="cl-dot frei"></span>hat Zeit</div>
+          <div class="cl-item"><span class="cl-dot weg"></span>abwesend</div>
+        </div>
         <div class="section-label" style="padding:20px 4px 8px">Kommende Termine</div>
         <!-- Live aus rooms/{room}/events, nach startDate sortiert (renderUpcoming, Ticket 0008) -->
         <div class="modules" id="cal-upcoming"></div>
@@ -776,8 +826,9 @@
       </div>
     </div>
 
-    <!-- Event loeschen (Ticket 0022): endgueltige Aktion, bewusst unten + abgesetzt -->
-    <div class="detail-danger">
+    <!-- Event loeschen (Ticket 0022): endgueltige Aktion, bewusst unten + abgesetzt.
+         Sichtbar nur fuer Ersteller/Owner (Ticket 0033, Teil 5; updateDeleteVisibility). -->
+    <div class="detail-danger" id="d-danger">
       <button class="danger-action" id="d-delete-btn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/></svg>
         Event löschen
@@ -855,31 +906,46 @@
       <div class="nav-mid">Kosten</div>
       <div class="nav-spacer"></div>
     </div>
+    <!-- ECHTES Kosten-Modul (Ticket 0033, Teil 1): live Ausgaben + Aufteilung + Saldo.
+         Inhalt kommt aus rooms/{room}/events/{id}/kosten (renderKosten). -->
     <div class="hero">
       <div class="hero-inner">
-        <div class="bal-amount pos">+45 €</div>
-        <div class="bal-label">stehen dir zurück</div>
-        <div class="bal-sub">Gesamt 318 € · 6 Personen · 53 € pro Kopf</div>
+        <div class="bal-amount" id="k-balance">0 €</div>
+        <div class="bal-label" id="k-balance-label">ausgeglichen</div>
+        <div class="bal-sub" id="k-balance-sub">Noch keine Ausgaben</div>
       </div>
     </div>
 
     <div class="section-label">Ausgaben</div>
-    <div class="modules">
-      <div class="expense"><div class="ex-avatar" style="background:#FF9500">MK</div><div class="ex-body"><div class="ex-title">Hotel-Anzahlung</div><div class="ex-sub">Du hast gezahlt</div></div><div class="ex-amount">98 €</div></div>
-      <div class="expense"><div class="ex-avatar" style="background:#34C759">JL</div><div class="ex-body"><div class="ex-title">Mietwagen</div><div class="ex-sub">JL hat gezahlt</div></div><div class="ex-amount">120 €</div></div>
-      <div class="expense"><div class="ex-avatar" style="background:#FF2D55">TS</div><div class="ex-body"><div class="ex-title">Großeinkauf</div><div class="ex-sub">TS hat gezahlt</div></div><div class="ex-amount">60 €</div></div>
-      <div class="expense"><div class="ex-avatar" style="background:#00C7BE">BN</div><div class="ex-body"><div class="ex-title">Bootstour</div><div class="ex-sub">BN hat gezahlt</div></div><div class="ex-amount">40 €</div></div>
-    </div>
+    <div class="modules" id="k-expense-list"></div>
+    <div class="mod-empty" id="k-empty">Noch keine Ausgaben. Füge unten die erste hinzu.</div>
 
-    <div class="section-label">Wer schuldet wem</div>
-    <div class="modules">
-      <div class="settle"><div class="settle-avas"><div class="settle-av" style="background:#007AFF">FH</div><div class="settle-av" style="background:#FF9500">MK</div></div><div class="settle-body"><b>FH</b> schuldet <b>dir</b></div><div class="settle-amount">45 €</div></div>
-      <div class="settle"><div class="settle-avas"><div class="settle-av" style="background:#AF52DE">LM</div><div class="settle-av" style="background:#34C759">JL</div></div><div class="settle-body"><b>LM</b> schuldet <b>JL</b></div><div class="settle-amount">53 €</div></div>
-      <div class="settle"><div class="settle-avas"><div class="settle-av" style="background:#00C7BE">BN</div><div class="settle-av" style="background:#34C759">JL</div></div><div class="settle-body"><b>BN</b> schuldet <b>JL</b></div><div class="settle-amount">13 €</div></div>
-    </div>
+    <div class="section-label" id="k-settle-label" style="display:none">Salden</div>
+    <div class="modules" id="k-settle-list" style="display:none"></div>
 
-    <button class="add-expense"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Ausgabe hinzufügen</button>
+    <button class="add-expense" id="k-add-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Ausgabe hinzufügen</button>
     <div class="bottom-pad"></div>
+  </div>
+
+  <!-- KOSTEN: Ausgabe anlegen/bearbeiten (Ticket 0033, Teil 1) -->
+  <div class="confirm-overlay" id="kexp" aria-hidden="true">
+    <div class="confirm-box kexp-box" role="dialog" aria-modal="true" aria-labelledby="kexp-title">
+      <div class="confirm-title" id="kexp-title">Ausgabe hinzufügen</div>
+      <div class="kexp-field"><input type="text" id="kexp-name" class="kexp-in" placeholder="Wofür? (z. B. Hotel)" maxlength="60" autocomplete="off"></div>
+      <div class="kexp-field"><input type="text" id="kexp-amount" class="kexp-in" placeholder="Betrag in €" inputmode="decimal" autocomplete="off"></div>
+      <div class="kexp-sub-label">Wer hat bezahlt?</div>
+      <div class="cp-select-wrap">
+        <select id="kexp-paidby" class="cp-select" aria-label="Wer hat bezahlt"></select>
+        <svg class="cp-select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="kexp-sub-label">Aufgeteilt auf</div>
+      <div class="kexp-split" id="kexp-split"></div>
+      <div class="confirm-actions kexp-actions">
+        <button class="confirm-cancel" id="kexp-cancel" type="button">Abbrechen</button>
+        <button class="confirm-ok kexp-save" id="kexp-save" type="button">Speichern</button>
+      </div>
+      <button class="kexp-delete" id="kexp-delete" type="button" hidden>Ausgabe löschen</button>
+    </div>
   </div>
 
   <!-- REISEPLAN -->
@@ -1065,17 +1131,24 @@
       <button class="nav-btn" data-close="treffpunkt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
       <div class="nav-mid">Treffpunkt</div><div class="nav-spacer"></div>
     </div>
-    <div class="map-prev"><div class="map-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="2.5"/></svg></div></div>
-    <div class="fgroup">
-      <div class="frow"><label>Ort</label><span class="info-val">Terminal 1, BER</span></div>
-      <div class="frow"><label>Treffen</label><span class="info-val">Sa 12.7. · 05:00</span></div>
+    <!-- ECHTER Treffpunkt (Ticket 0033, Teil 2): gemeinsamer Ort (via Photon-Picker, 0020/0021)
+         + optional Zeit/Notiz. Inhalt aus rooms/{room}/events/{id}/treffpunkt (renderTreffpunkt). -->
+    <div class="map-prev" id="tp-map" style="display:none"><div class="map-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="2.5"/></svg></div></div>
+    <div class="fgroup" id="tp-view" style="display:none">
+      <div class="frow" id="tp-row-loc"><label>Ort</label><span class="info-val" id="tp-val-loc"></span></div>
+      <div class="frow" id="tp-row-time"><label>Treffen</label><span class="info-val" id="tp-val-time"></span></div>
+      <div class="frow" id="tp-row-note"><label>Notiz</label><span class="info-val" id="tp-val-note"></span></div>
     </div>
-    <div class="section-label">Wer kommt (6)</div>
-    <div class="fgroup">
-      <div class="invited" style="padding:14px 16px">
-        <div class="avatar" style="background:#FF9500">MK</div><div class="avatar" style="background:#34C759">JL</div><div class="avatar" style="background:#FF2D55">TS</div><div class="avatar" style="background:#00C7BE">BN</div><div class="avatar" style="background:#AF52DE">LM</div><div class="avatar" style="background:#007AFF">FH</div>
-      </div>
+    <div class="tp-empty" id="tp-empty">Noch kein Treffpunkt gesetzt. Trag unten Ort und (optional) Zeit ein.</div>
+
+    <div class="section-label" id="tp-form-label">Treffpunkt setzen</div>
+    <div class="fgroup loc-group">
+      <div class="frow loc-frow"><label>Ort</label><input id="tp-loc" placeholder="Wo trefft ihr euch?" autocomplete="off">
+        <div class="loc-ac" id="tp-loc-ac" role="listbox"></div></div>
+      <div class="frow"><label>Zeit</label><input id="tp-time" placeholder="z.B. Sa · 05:00" maxlength="40" autocomplete="off"></div>
+      <div class="frow"><label>Notiz</label><input id="tp-note" placeholder="optional" maxlength="120" autocomplete="off"></div>
     </div>
+    <button class="tp-save" id="tp-save-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Treffpunkt speichern</button>
     <div class="bottom-pad"></div>
   </div>
 
@@ -1236,7 +1309,7 @@
                                // Ticket 0028 entfernt -- noch vorhandene Felder werden
                                // ignoriert (kein Crash, keine Migration). Das Google-Foto
                                // (photoURL) ist ebenfalls nicht (mehr) Avatar-Quelle.
-         events/{eventId}:   { type, name, location, dateRange, status,
+         events/{eventId}:   { type, name, location, dateRange, status, statusManual?,
                                description, modules, participants, createdBy,
                                createdAt, startDate?, endDate?, deadline?, deadlineISO?,
                                autoStatusDate?, autoStatusTo? }
@@ -1251,6 +1324,9 @@
                                // deadlineISO: optional ISO yyyy-mm-dd der Frist (Logik)
                                // autoStatusDate: optional ISO; ab diesem Tag greift
                                //              autoStatusTo (Auto-Status, clientseitig)
+                               // statusManual:   optional true -> Nutzer hat den Status
+                               //              bewusst gesetzt; unterdrueckt JEDES Auto-
+                               //              Override (Ticket 0033, Teil 3; manuell > auto)
                                // autoStatusTo:   optional "live"|"past" -- Ziel des
                                //              Auto-Status; schiebt nur VORWAERTS
                                // description: optionaler Freitext ("Sonstige Infos")
@@ -1265,11 +1341,25 @@
                                // uid des Zugewiesenen ODER null/absent = "fuer alle".
                                // done = abgehakt. Liegt UNTER events/{id} -> von den
                                // P6-Rules (events member-write/read) abgedeckt.
-         availability/{memberId}/{YYYY-MM-DD}: true
-                               // Abwesenheit raumweit (Ticket 0008). Tag-Klick im
-                               // Kalender toggelt true/entfernt; memberId-basiert,
-                               // NICHT pro Event (pro-Event spaeter). Datum-Key rein
-                               // zahlenbasiert (calISO) -> kein verbotenes RTDB-Zeichen.
+         events/{eventId}/kosten/{expenseId}:
+                               { title, amount(Zahl), paidBy(uid),
+                                 splitAmong('all' ODER Liste uids), createdBy(uid), createdAt }
+                               // Gemeinsame, live Ausgaben-Liste pro Event (Ticket 0033,
+                               // Teil 1). amount > 0 (defensiv geparst). splitAmong='all' =
+                               // alle Event-Teilnehmer (neue automatisch dabei) ODER eine
+                               // konkrete uid-Liste. Saldo = gezahlt - eigener Anteil.
+                               // Liegt UNTER events/{id} -> P6-abgedeckt.
+         events/{eventId}/treffpunkt:
+                               { location, lat?, lon?, time?, note? }
+                               // EIN gemeinsamer Treffpunkt pro Event (Ticket 0033, Teil 2).
+                               // Ort via Photon/OSM-Picker (0020/0021) -> Name + Koordinaten;
+                               // Maps-Link nutzt die Koordinaten. P6-abgedeckt.
+         availability/{memberId}/{YYYY-MM-DD}: 'weg' | 'frei' (Legacy: true == 'weg')
+                               // Verfuegbarkeit raumweit (Ticket 0008; erweitert 0033 Teil 4).
+                               // 'weg' = abwesend, 'frei' = hat Zeit. Tag-Klick zykliert
+                               // nichts -> frei -> weg -> nichts. LEGACY: alter Wert true wird
+                               // als 'weg' behandelt (kein Bruch). memberId-basiert, NICHT pro
+                               // Event. Datum-Key zahlenbasiert (calISO) -> kein verbotenes Zeichen.
      ============================================================ */
 
   const app = initializeApp(firebaseConfig);
@@ -1298,6 +1388,7 @@
   const state = { room:null, name:null, memberId:null, uid:null, photo:null, avatar:null, color:null };
   let membersCache = {};
   let lastEvents = {};
+  let roomOwnerUid = null;                     // rooms/{room}/ownerUid (Ticket 0024; Host-Loeschrecht 0033, Teil 5)
   let availabilityCache = {};                 // { memberId: { 'YYYY-MM-DD': true } } (Ticket 0008)
   const calState = { year: 2026, month: 6 };  // Kalender-Tab: Start Juli 2026 (App-Demo-Rahmen, wie Picker)
 
@@ -1650,6 +1741,7 @@
       renderEvents(lastEvents);
       renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
       if (packEventId) renderPackliste();        // Zuweisungs-Avatar/-Name live nachziehen (Ticket 0029)
+      if (kostenEventId) renderKosten();         // Zahler-/Saldo-Namen live nachziehen (Ticket 0033, Teil 1)
       renderBesorg();                            // Besorg-Zuweisungen live nachziehen (Ticket 0030)
     });
     onValue(ref(db, `rooms/${room}/events`), snap => {
@@ -1659,10 +1751,16 @@
       renderCalendar();                          // Event-Dots + "Kommende Termine" live (Ticket 0008)
       renderBesorg();                            // Gesamt-Besorgliste live ueber Events-Cache (Ticket 0030)
     });
-    // Abwesenheiten live: rooms/{room}/availability/{memberId}/{YYYY-MM-DD} = true (Ticket 0008)
+    // Abwesenheiten/Verfuegbarkeit live: rooms/{room}/availability/{memberId}/{YYYY-MM-DD}
+    // = 'weg'|'frei' (Ticket 0008; erweitert 0033 Teil 4; Legacy true == 'weg')
     onValue(ref(db, `rooms/${room}/availability`), snap => {
       availabilityCache = snap.val() || {};
       renderCalendar();
+    });
+    // Raum-Owner live (Ticket 0033, Teil 5): bestimmt mit, wer ein Event loeschen darf.
+    onValue(ref(db, `rooms/${room}/ownerUid`), snap => {
+      roomOwnerUid = snap.val() || null;
+      if (currentDetailId) updateDeleteVisibility(currentDetailId);
     });
   }
 
@@ -1722,12 +1820,27 @@
   const STATUS_ORDER = { plan:0, live:1, past:2 };
   function effectiveStatus(ev){
     const base = ['plan','live','past'].includes(ev.status) ? ev.status : 'plan';
+    // Manuelle Setzung (Ticket 0033, Teil 3) hat IMMER Vorrang -> kein Auto-Override
+    // (auch nicht endDate-Auto-Vorbei). Wer den Status bewusst setzt, behaelt ihn.
+    if (ev.statusManual) return base;
+    let eff = base;
+    // Bestehende autoStatusDate/autoStatusTo-Logik (Ticket 0007): schiebt nur VORWAERTS.
     const to = ev.autoStatusTo;
-    if (ev.autoStatusDate && ['live','past'].includes(to) && STATUS_ORDER[to] > STATUS_ORDER[base]){
+    if (ev.autoStatusDate && ['live','past'].includes(to) && STATUS_ORDER[to] > STATUS_ORDER[eff]){
       const du = daysUntil(ev.autoStatusDate);
-      if (du !== null && du <= 0) return to;   // heute oder in der Vergangenheit -> Ziel
+      if (du !== null && du <= 0) eff = to;     // heute oder in der Vergangenheit -> Ziel
     }
-    return base;
+    // NEU (Ticket 0033, Teil 3): Enddatum vorbei -> automatisch 'vorbei'. endDate (0023),
+    // Fallback startDate (Eintages/Legacy). Nur vorwaerts; "vorbei" erst NACH dem Enddatum
+    // (du < 0 -> Enddatum war gestern/frueher), nicht schon am Enddatum selbst.
+    if (STATUS_ORDER.past > STATUS_ORDER[eff]){
+      const endIso = isoDateOrNull(ev.endDate) || isoDateOrNull(ev.startDate);
+      if (endIso){
+        const du = daysUntil(endIso);
+        if (du !== null && du < 0) eff = 'past';
+      }
+    }
+    return eff;
   }
 
   function avatarsHTML(members, max){
@@ -1920,6 +2033,8 @@
         }).join('');
     // Badge, Status-Pillen und RSVP-Block aus dem (effektiven) Status rendern.
     renderDetailStatus(d.status, d.deadline);
+    // Loeschen-Knopf nur fuer Berechtigte sichtbar (Ticket 0033, Teil 5).
+    updateDeleteVisibility(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -1957,11 +2072,16 @@
   async function setEventStatus(newStatus){
     if (!['plan','live','past'].includes(newStatus)) return;   // nie ungueltige Werte schreiben
     if (!state.room || !currentDetailId) return;               // ohne Raum/Event kein Schreiben
-    if (lastEvents[currentDetailId]) lastEvents[currentDetailId].status = newStatus;
-    renderEvents(lastEvents);     // Card-Badge sofort (Auto-Status ggf. weiterhin vorrangig)
+    // statusManual:true mitschreiben (Ticket 0033, Teil 3) -> die manuelle Wahl gewinnt ab
+    // jetzt gegen das endDate-Auto-Vorbei (und das 0007-Auto-Vorwaerts).
+    if (lastEvents[currentDetailId]){
+      lastEvents[currentDetailId].status = newStatus;
+      lastEvents[currentDetailId].statusManual = true;
+    }
+    renderEvents(lastEvents);     // Card-Badge sofort
     refreshOpenDetail();          // Detail-Badge + Pillen sofort
     try {
-      await set(ref(db, `rooms/${state.room}/events/${currentDetailId}/status`), newStatus);
+      await update(ref(db, `rooms/${state.room}/events/${currentDetailId}`), { status: newStatus, statusManual: true });
     } catch(e){ /* Schreibfehler -> der Live-Listener korrigiert auf den RTDB-Stand */ }
   }
   document.querySelectorAll('#d-statusctl .status-pill').forEach(b =>
@@ -1979,8 +2099,25 @@
   // geloeschte Event zu). Optimistisch lokal entfernen -> Card weg ohne Reload; der
   // onValue-Listener reconciled danach auf den RTDB-Stand.
   const confirmDel = $('confirm-del');
+  // Host-Loeschrecht (Ticket 0033, Teil 5): nur der ERSTELLER (createdBy == eigene uid) ODER
+  // der RAUM-OWNER (rooms/{room}/ownerUid == eigene uid) darf loeschen. HINWEIS: rein
+  // clientseitige UI-Durchsetzung -- echte serverseitige Erzwingung via RTDB-Rules ist ein
+  // spaeteres Feintuning (events lassen sich per Rule schwer delete-vs-edit unterscheiden).
+  function canDeleteEvent(ev){
+    if (!state.uid) return false;
+    if (ev && ev.createdBy === state.uid) return true;        // Ersteller des Events
+    if (roomOwnerUid && roomOwnerUid === state.uid) return true;  // Owner des Raums
+    return false;
+  }
+  // Loeschen-Knopf (ganzer .detail-danger-Block) ein-/ausblenden je nach Berechtigung.
+  function updateDeleteVisibility(id){
+    const danger = $('d-danger'); if (!danger) return;
+    const ev = (id && lastEvents[id]) ? lastEvents[id] : null;
+    danger.style.display = canDeleteEvent(ev) ? '' : 'none';
+  }
   function openDeleteConfirm(){
     if (!currentDetailId) return;                 // ohne offenes Event nichts zu loeschen
+    if (!canDeleteEvent(lastEvents[currentDetailId])) return;   // Schutz auch am Aktions-Eingang
     confirmDel.classList.add('open');
     confirmDel.setAttribute('aria-hidden', 'false');
   }
@@ -2005,6 +2142,7 @@
   // Klick auf den Overlay-Hintergrund (nicht die Box) = Abbrechen (sichere Default)
   confirmDel.addEventListener('click', e => { if (e.target === confirmDel) closeDeleteConfirm(); });
   if (DEBUG) window.__cp.getDetailId = () => currentDetailId;   // Test-Beleg Listener-Guard
+  if (DEBUG) Object.assign(window.__cp, { canDeleteEvent, getOwnerUid: () => roomOwnerUid });   // Host-Loeschrecht (0033, Teil 5)
 
   document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => { const s = $(el.dataset.open); s.scrollTop = 0; s.classList.add('open'); }));
   document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => $(el.dataset.close).classList.remove('open')));
@@ -2320,6 +2458,287 @@
       packAssignOverlay.addEventListener('click', e => { if (e.target === packAssignOverlay) closePackAssign(); });
     }
   }
+
+  // ---- Kosten-Modul (Ticket 0033, Teil 1): echte, live-synchronisierte Ausgaben pro Event ----
+  // Speicher: rooms/{room}/events/{eventId}/kosten/{expenseId}
+  //   { title, amount(Zahl), paidBy(uid), splitAmong('all' ODER Liste uids), createdBy(uid),
+  //     createdAt(serverTimestamp) }. Liegt UNTER events/{id} -> P6-Rules (events member-
+  //   write/read) decken es ab; KEINE Rules-Aenderung. XSS: Titel/Namen via textContent.
+  //   Betrag defensiv geparst (Komma/Punkt), nur > 0. Saldo je Mitglied = Summe gezahlt -
+  //   Summe eigener Anteile (Ausgabe gleichmaessig auf splitAmong aufgeteilt).
+  const kostenScreen = $('kosten');
+  const kostenListEl = $('k-expense-list');
+  let kostenUnsub = null;            // aktiver onValue-Detacher
+  let kostenItems = {};              // letzter RTDB-Stand { expenseId: {...} }
+  let kostenEventId = null;          // Event, dessen Kosten gerade offen sind
+  let kexpEditId = null;             // Ausgabe, die das Formular bearbeitet (null = neu)
+  let kexpSplit = new Set();         // aktuell im Formular gewaehlte Split-uids
+
+  function kostenBaseRef(){
+    return (state.room && kostenEventId)
+      ? ref(db, `rooms/${state.room}/events/${kostenEventId}/kosten`) : null;
+  }
+  function kostenItemRef(id){
+    return (state.room && kostenEventId && id)
+      ? ref(db, `rooms/${state.room}/events/${kostenEventId}/kosten/${id}`) : null;
+  }
+  // Teilnehmer-uids des offenen Events (Quelle fuer 'all'-Split + paidBy/Split-Auswahl).
+  function kostenMemberIds(){
+    const ev = (lastEvents || {})[kostenEventId];
+    return ev ? Object.keys(eventMembers(ev)) : [];
+  }
+  // Betrag defensiv: "30,50" / "30.50" / "1.234,56" / " 30 € " -> Number; sonst NaN.
+  function parseAmount(s){
+    s = String(s == null ? '' : s).trim().replace(/[€\s]/g, '');
+    if (!s) return NaN;
+    if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    else s = s.replace(',', '.');
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+  // Geldbetrag deutsch: 1.234,56 € (zwei Nachkommastellen, '-' bei negativ).
+  function fmtEuro(n){
+    if (!Number.isFinite(n)) n = 0;
+    const neg = n < 0;
+    const v = Math.abs(Math.round(n * 100) / 100).toFixed(2);
+    const parts = v.split('.'); const intP = parts[0], frac = parts[1];
+    const grp = intP.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return (neg ? '-' : '') + grp + ',' + frac + ' €';
+  }
+  function memberName(uid){
+    const m = membersCache && membersCache[uid];
+    return (m && m.name) || (uid ? 'Unbekannt' : '');
+  }
+  // Split-uids einer Ausgabe normalisieren (defensiv): 'all'/fehlt -> alle Event-Mitglieder;
+  // Array -> wie ist; Objekt {uid:true} -> Keys; leer -> alle. Nie leer (kein Div-durch-0).
+  function splitUids(it, memberIds){
+    const sp = it && it.splitAmong;
+    let parts;
+    if (sp === 'all' || sp == null) parts = memberIds.slice();
+    else if (Array.isArray(sp)) parts = sp.filter(Boolean);
+    else if (typeof sp === 'object') parts = Object.keys(sp).filter(k => sp[k]);
+    else parts = memberIds.slice();
+    return parts.length ? parts : memberIds.slice();
+  }
+  // Netto-Saldo je Mitglied: + = bekommt zurueck, - = schuldet.
+  function computeBalances(items, memberIds){
+    const bal = {};
+    (memberIds || []).forEach(u => { bal[u] = 0; });
+    Object.keys(items || {}).forEach(id => {
+      const it = items[id];
+      const amt = Number(it && it.amount);
+      if (!Number.isFinite(amt) || amt <= 0) return;          // nur gueltige, positive Betraege
+      const parts = splitUids(it, memberIds || []);
+      if (!parts.length) return;
+      const payer = it.paidBy;
+      if (payer != null){ if (!(payer in bal)) bal[payer] = 0; bal[payer] += amt; }
+      const share = amt / parts.length;
+      parts.forEach(u => { if (!(u in bal)) bal[u] = 0; bal[u] -= share; });
+    });
+    return bal;
+  }
+  function kostenSortedIds(){
+    return Object.keys(kostenItems).sort((a,b) => {
+      const ca = (kostenItems[a] && +kostenItems[a].createdAt) || 0;
+      const cb = (kostenItems[b] && +kostenItems[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
+    });
+  }
+  function openKosten(){
+    kostenEventId = currentDetailId;                       // an das offene Event koppeln
+    if (kostenUnsub){ kostenUnsub(); kostenUnsub = null; }
+    closeKexp();
+    const r = kostenBaseRef();
+    if (!r){ kostenItems = {}; renderKosten(); return; }
+    kostenUnsub = onValue(r, snap => { kostenItems = snap.val() || {}; renderKosten(); });
+  }
+  function closeKosten(){
+    if (kostenUnsub){ kostenUnsub(); kostenUnsub = null; }
+    kostenEventId = null;
+    closeKexp();
+  }
+  function renderKosten(){
+    if (!kostenListEl) return;
+    const ids = kostenSortedIds();
+    const memberIds = kostenMemberIds();
+    kostenListEl.innerHTML = '';                            // kein innerHTML aus Daten -> DOM-Bau pro Zeile
+    ids.forEach(id => kostenListEl.appendChild(buildExpenseRow(id, kostenItems[id] || {}, memberIds)));
+    const emptyEl = $('k-empty'); if (emptyEl) emptyEl.style.display = ids.length ? 'none' : '';
+    kostenListEl.style.display = ids.length ? '' : 'none';
+    const bal = computeBalances(kostenItems, memberIds);
+    renderKostenBalance(bal);
+    renderKostenSettle(bal);
+  }
+  function renderKostenBalance(bal){
+    const amtEl = $('k-balance'), labEl = $('k-balance-label'), subEl = $('k-balance-sub');
+    const my = state.uid && (state.uid in bal) ? bal[state.uid] : 0;
+    const r = Math.round(my * 100) / 100;
+    if (amtEl){
+      amtEl.textContent = (r > 0.005 ? '+' : '') + fmtEuro(r);
+      amtEl.className = 'bal-amount' + (r > 0.005 ? ' pos' : (r < -0.005 ? ' neg' : ''));
+    }
+    if (labEl) labEl.textContent = r > 0.005 ? 'stehen dir zu' : (r < -0.005 ? 'schuldest du' : 'ausgeglichen');
+    if (subEl){
+      let total = 0;
+      Object.keys(kostenItems || {}).forEach(id => {
+        const a = Number(kostenItems[id] && kostenItems[id].amount);
+        if (Number.isFinite(a) && a > 0) total += a;
+      });
+      const n = kostenMemberIds().length;
+      subEl.textContent = total > 0
+        ? ('Gesamt ' + fmtEuro(total) + (n ? ' · ' + n + ' Personen' : ''))
+        : 'Noch keine Ausgaben';
+    }
+  }
+  function renderKostenSettle(bal){
+    const listEl = $('k-settle-list'), labEl = $('k-settle-label');
+    if (!listEl) return;
+    const uids = Object.keys(bal).filter(u => Math.abs(bal[u]) >= 0.005);
+    listEl.innerHTML = '';
+    if (!uids.length){ listEl.style.display = 'none'; if (labEl) labEl.style.display = 'none'; return; }
+    listEl.style.display = ''; if (labEl) labEl.style.display = '';
+    uids.sort((a,b) => bal[b] - bal[a]);                    // groesste Forderung zuerst
+    uids.forEach(uid => {
+      const row = document.createElement('div');
+      row.className = 'bal-row';
+      const m = membersCache && membersCache[uid];
+      row.insertAdjacentHTML('beforeend', m ? avatarMarkup(m, 'ex-avatar') : '<div class="ex-avatar" style="background:#8E8E93">?</div>');
+      const nm = document.createElement('div'); nm.className = 'bal-name';
+      nm.textContent = memberName(uid) + (uid === state.uid ? ' (du)' : '');
+      row.appendChild(nm);
+      const r = Math.round(bal[uid] * 100) / 100;
+      const val = document.createElement('div');
+      val.className = 'bal-val ' + (r > 0.005 ? 'pos' : (r < -0.005 ? 'neg' : 'zero'));
+      val.textContent = (r > 0 ? 'kriegt ' : (r < 0 ? 'schuldet ' : '')) + fmtEuro(r);
+      row.appendChild(val);
+      listEl.appendChild(row);
+    });
+  }
+  function buildExpenseRow(id, it, memberIds){
+    const row = document.createElement('div');
+    row.className = 'expense clickable';
+    row.dataset.id = id;
+    const m = it.paidBy && membersCache ? membersCache[it.paidBy] : null;
+    row.insertAdjacentHTML('beforeend', m ? avatarMarkup(m, 'ex-avatar') : '<div class="ex-avatar" style="background:#8E8E93">?</div>');
+    const body = document.createElement('div'); body.className = 'ex-body';
+    const t = document.createElement('div'); t.className = 'ex-title';
+    t.textContent = it.title || '(ohne Titel)';            // textContent -> XSS-sicher
+    body.appendChild(t);
+    const sub = document.createElement('div'); sub.className = 'ex-sub';
+    sub.textContent = it.paidBy === state.uid ? 'Du hast gezahlt' : (memberName(it.paidBy) + ' hat gezahlt');
+    body.appendChild(sub);
+    const parts = splitUids(it, memberIds);
+    const split = document.createElement('div'); split.className = 'ex-split';
+    split.textContent = (it.splitAmong === 'all' || it.splitAmong == null)
+      ? ('aufgeteilt auf alle (' + parts.length + ')')
+      : ('aufgeteilt auf ' + parts.length);
+    body.appendChild(split);
+    row.appendChild(body);
+    const amt = document.createElement('div'); amt.className = 'ex-amount';
+    const a = Number(it.amount);
+    amt.textContent = Number.isFinite(a) ? fmtEuro(a) : '–';
+    row.appendChild(amt);
+    row.addEventListener('click', () => openKexp(id));       // Zeile -> bearbeiten/loeschen
+    return row;
+  }
+  // ---- Ausgabe-Formular (anlegen / bearbeiten / loeschen) ----
+  function fillKexpMembers(paidByDefault){
+    const memberIds = kostenMemberIds();
+    const sel = $('kexp-paidby');
+    if (sel){
+      sel.innerHTML = '';
+      memberIds.forEach(uid => {
+        const o = document.createElement('option');
+        o.value = uid; o.textContent = memberName(uid) + (uid === state.uid ? ' (du)' : '');
+        sel.appendChild(o);
+      });
+      if (paidByDefault && memberIds.includes(paidByDefault)) sel.value = paidByDefault;
+      else if (state.uid && memberIds.includes(state.uid)) sel.value = state.uid;
+    }
+    renderKexpSplit();
+  }
+  function renderKexpSplit(){
+    const box = $('kexp-split'); if (!box) return;
+    const memberIds = kostenMemberIds();
+    box.innerHTML = '';
+    memberIds.forEach(uid => {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'kexp-opt' + (kexpSplit.has(uid) ? ' on' : '');
+      opt.dataset.uid = uid;
+      const m = membersCache && membersCache[uid];
+      opt.insertAdjacentHTML('beforeend', m ? avatarMarkup(m, 'av-sm') : '<div class="av-sm" style="background:#8E8E93">?</div>');
+      const nm = document.createElement('span'); nm.className = 'kexp-name';
+      nm.textContent = memberName(uid) + (uid === state.uid ? ' (du)' : '');
+      opt.appendChild(nm);
+      const ck = document.createElement('span'); ck.className = 'kexp-check';
+      ck.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>';
+      opt.appendChild(ck);
+      opt.addEventListener('click', () => {
+        if (kexpSplit.has(uid)) kexpSplit.delete(uid); else kexpSplit.add(uid);
+        opt.classList.toggle('on', kexpSplit.has(uid));
+      });
+      box.appendChild(opt);
+    });
+  }
+  function openKexp(id){
+    const overlay = $('kexp'); if (!overlay) return;
+    kexpEditId = id || null;
+    const memberIds = kostenMemberIds();
+    const it = id ? (kostenItems[id] || {}) : null;
+    $('kexp-title').textContent = id ? 'Ausgabe bearbeiten' : 'Ausgabe hinzufügen';
+    $('kexp-name').value = it ? (it.title || '') : '';
+    $('kexp-amount').value = (it && Number.isFinite(Number(it.amount))) ? String(it.amount).replace('.', ',') : '';
+    kexpSplit = it ? new Set(splitUids(it, memberIds)) : new Set(memberIds);   // neu -> alle (Default)
+    fillKexpMembers(it ? it.paidBy : null);
+    const delBtn = $('kexp-delete'); if (delBtn) delBtn.hidden = !id;
+    overlay.classList.add('open'); overlay.setAttribute('aria-hidden', 'false');
+  }
+  function closeKexp(){
+    const overlay = $('kexp'); if (!overlay) return;
+    overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true');
+    kexpEditId = null;
+  }
+  async function saveKexp(){
+    const memberIds = kostenMemberIds();
+    const title = ($('kexp-name').value || '').trim();
+    const amount = parseAmount($('kexp-amount').value);
+    if (!title){ $('kexp-name').focus(); return; }
+    if (!Number.isFinite(amount) || amount <= 0){ $('kexp-amount').focus(); return; }   // nur > 0
+    const paidBy = $('kexp-paidby').value || state.uid || null;
+    // Volle Mitgliederliste gewaehlt -> 'all' (neue Member automatisch dabei); sonst die
+    // konkrete Liste. Leer -> 'all' (defensiv, kein Div-durch-0 im Saldo).
+    const chosen = memberIds.filter(u => kexpSplit.has(u));
+    const splitAmong = (!chosen.length || chosen.length === memberIds.length) ? 'all' : chosen;
+    if (kexpEditId){
+      const ir = kostenItemRef(kexpEditId);
+      if (ir){ try { await update(ir, { title, amount, paidBy, splitAmong }); } catch(e){} }
+    } else {
+      const r = kostenBaseRef();
+      if (r){ try { await push(r, { title, amount, paidBy, splitAmong, createdBy: state.uid || null, createdAt: serverTimestamp() }); } catch(e){} }
+    }
+    closeKexp();
+  }
+  async function deleteKexp(){
+    if (!kexpEditId) return;
+    const ir = kostenItemRef(kexpEditId);
+    if (ir){ try { await remove(ir); } catch(e){} }
+    closeKexp();
+  }
+  if (kostenScreen){
+    const kMod = document.querySelector('#detail .mod[data-open="kosten"]');
+    if (kMod) kMod.addEventListener('click', openKosten);   // zusaetzlich zum generischen [data-open]
+    const kClose = kostenScreen.querySelector('[data-close="kosten"]');
+    if (kClose) kClose.addEventListener('click', closeKosten);
+    const addBtn = $('k-add-btn'); if (addBtn) addBtn.addEventListener('click', () => openKexp(null));
+    const saveBtn = $('kexp-save'); if (saveBtn) saveBtn.addEventListener('click', saveKexp);
+    const cancelBtn = $('kexp-cancel'); if (cancelBtn) cancelBtn.addEventListener('click', closeKexp);
+    const delBtn = $('kexp-delete'); if (delBtn) delBtn.addEventListener('click', deleteKexp);
+    const overlay = $('kexp');
+    if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeKexp(); });
+  }
+  if (DEBUG) Object.assign(window.__cp, { openKosten, computeBalances, parseAmount, fmtEuro });
 
   // ---- Gesamt-Besorgliste (Ticket 0030): raumweite Aggregat-Ansicht ----
   // Buendelt OFFENE (done==false) Packlisten-Items ueber ALLE Events des Raums aus dem
@@ -3054,17 +3473,22 @@
     });
     locAC.classList.add('open');
   }
+  // Reiner Photon-Fetch (Ticket 0020; ab 0033 geteilt mit dem Treffpunkt-Picker, Teil 2).
+  // Wirft bei Netz-/API-Fehler -> Aufrufer entscheidet ueber den Hinweis.
+  async function fetchPhoton(q, signal){
+    const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=5&lang=de';
+    const res = await fetch(url, { signal });
+    if (!res.ok) throw new Error('photon ' + res.status);
+    const data = await res.json();
+    return data && Array.isArray(data.features) ? data.features : [];
+  }
   async function runLocSearch(q){
     const seq = ++acSeq;
     if (acCtrl) { try { acCtrl.abort(); } catch(e){} }
     acCtrl = new AbortController();
     let feats = [];
     try {
-      const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=5&lang=de';
-      const res = await fetch(url, { signal: acCtrl.signal });
-      if (!res.ok) throw new Error('photon ' + res.status);
-      const data = await res.json();
-      feats = data && Array.isArray(data.features) ? data.features : [];
+      feats = await fetchPhoton(q, acCtrl.signal);
     } catch (e) {
       if (e && e.name === 'AbortError') return;       // veralteter Request -> ignorieren
       if (seq === acSeq) showLocHint(LOC_NO_RESULTS); // Netz-/API-Fehler -> Hinweis, kein Crash
@@ -3087,6 +3511,141 @@
     if (e.target.closest('.loc-frow')) return;
     closeLocAC();
   });
+
+  // ---- Generischer Photon-Autocomplete (Ticket 0033, Teil 2 -- Reuse 0020/0021) -------
+  // Bindet ein beliebiges Eingabefeld + Dropdown an die GLEICHE Photon/OSM-Suche wie der
+  // Event-Orts-Picker (fetchPhoton, photonLabel, loc-ac-Bausteine). onPick({label,lat,lon})
+  // bei Auswahl; onType() beim Tippen (verwirft eine zuvor gewaehlte Koordinate). Alte
+  // Requests via AbortController (Race-Schutz); Vorschlaege via textContent (kein XSS).
+  function attachPhotonAC(input, ac, onPick, onType){
+    if (!input || !ac) return null;
+    let timer = null, ctrl = null, seq = 0;
+    function close(){ ac.classList.remove('open'); ac.textContent = ''; }
+    function hint(msg){ close(); const r = document.createElement('div'); r.className = 'loc-ac-hint'; r.textContent = msg; ac.appendChild(r); ac.classList.add('open'); }
+    function render(features){
+      close();
+      const list = (features || []).map(f => ({
+        label: photonLabel(f && f.properties),
+        coords: f && f.geometry && Array.isArray(f.geometry.coordinates) ? f.geometry.coordinates : null
+      })).filter(x => x.label && x.coords && coordOK(x.coords[1]) && coordOK(x.coords[0]));
+      if (!list.length){ hint(LOC_NO_RESULTS); return; }
+      list.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'loc-ac-item'; row.setAttribute('role', 'option');
+        row.textContent = item.label;                                // KEIN innerHTML aus API-Daten
+        row.addEventListener('mousedown', e => e.preventDefault());
+        row.addEventListener('click', () => { onPick({ label: item.label, lat: item.coords[1], lon: item.coords[0] }); close(); });
+        ac.appendChild(row);
+      });
+      ac.classList.add('open');
+    }
+    async function search(q){
+      const s = ++seq;
+      if (ctrl){ try { ctrl.abort(); } catch(e){} }
+      ctrl = new AbortController();
+      let feats = [];
+      try { feats = await fetchPhoton(q, ctrl.signal); }
+      catch(e){ if (e && e.name === 'AbortError') return; if (s === seq) hint(LOC_NO_RESULTS); return; }
+      if (s !== seq) return;
+      render(feats);
+    }
+    input.addEventListener('input', () => {
+      if (onType) onType();
+      const q = input.value.trim();
+      clearTimeout(timer);
+      if (ctrl){ try { ctrl.abort(); } catch(e){} ctrl = null; }
+      if (q.length < PHOTON_MIN){ close(); return; }
+      timer = setTimeout(() => search(q), PHOTON_DEBOUNCE);
+    });
+    document.addEventListener('click', e => {
+      if (!ac.classList.contains('open')) return;
+      if (input.parentNode && input.parentNode.contains(e.target)) return;
+      close();
+    });
+    return { close };
+  }
+
+  // ---- Treffpunkt-Modul (Ticket 0033, Teil 2): ein gemeinsamer Treffpunkt pro Event ----
+  // Speicher: rooms/{room}/events/{eventId}/treffpunkt = { location, lat?, lon?, time?, note? }.
+  // Liegt UNTER events/{id} -> P6-Rules decken es ab; KEINE Rules-Aenderung. Ort via dem
+  // GETEILTEN Photon-Picker (0020/0021) -> Anzeigename + exakte Koordinaten; Maps-Link nutzt
+  // dieselbe mapsAnchor-Logik wie Event-Ort (0020). XSS: Anzeige via textContent/mapsAnchor.
+  const tpScreen = $('treffpunkt');
+  let tpUnsub = null;                 // aktiver onValue-Detacher
+  let tpData = null;                  // letzter RTDB-Stand des Treffpunkts (Objekt oder null)
+  let tpEventId = null;              // Event, dessen Treffpunkt gerade offen ist
+  let tpLat = null, tpLon = null;    // im Formular gewaehlte Koordinaten (Photon-Auswahl)
+
+  function tpRef(){
+    return (state.room && tpEventId)
+      ? ref(db, `rooms/${state.room}/events/${tpEventId}/treffpunkt`) : null;
+  }
+  function openTreffpunkt(){
+    tpEventId = currentDetailId;
+    if (tpUnsub){ tpUnsub(); tpUnsub = null; }
+    const r = tpRef();
+    if (!r){ tpData = null; renderTreffpunkt(); return; }
+    tpUnsub = onValue(r, snap => { tpData = snap.val() || null; renderTreffpunkt(); });
+  }
+  function closeTreffpunkt(){
+    if (tpUnsub){ tpUnsub(); tpUnsub = null; }
+    tpEventId = null;
+    const ac = $('tp-loc-ac'); if (ac){ ac.classList.remove('open'); ac.textContent = ''; }
+  }
+  // Anzeige (oben) + Formular-Vorbelegung (unten) aus dem aktuellen Stand rendern.
+  function renderTreffpunkt(){
+    const d = (tpData && typeof tpData === 'object') ? tpData : {};
+    const loc = (d.location || '').trim();
+    const time = (d.time || '').trim();
+    const note = (d.note || '').trim();
+    const has = !!(loc || time || note);
+    // ---- Anzeige ----
+    const mapEl = $('tp-map'); if (mapEl) mapEl.style.display = loc ? '' : 'none';
+    const view = $('tp-view'); if (view) view.style.display = has ? '' : 'none';
+    const empty = $('tp-empty'); if (empty) empty.style.display = has ? 'none' : '';
+    const rowLoc = $('tp-row-loc'), valLoc = $('tp-val-loc');
+    if (rowLoc) rowLoc.style.display = loc ? '' : 'none';
+    if (valLoc) valLoc.innerHTML = loc ? mapsAnchor(loc, d.lat, d.lon) : '';   // Maps-Link wie Event-Ort (0020)
+    const rowTime = $('tp-row-time'), valTime = $('tp-val-time');
+    if (rowTime) rowTime.style.display = time ? '' : 'none';
+    if (valTime) valTime.textContent = time;
+    const rowNote = $('tp-row-note'), valNote = $('tp-val-note');
+    if (rowNote) rowNote.style.display = note ? '' : 'none';
+    if (valNote) valNote.textContent = note;
+    // ---- Formular-Vorbelegung (nur wenn der Nutzer gerade nicht tippt: beim Oeffnen) ----
+    const fLoc = $('tp-loc'), fTime = $('tp-time'), fNote = $('tp-note');
+    const lab = $('tp-form-label');
+    if (lab) lab.textContent = has ? 'Treffpunkt bearbeiten' : 'Treffpunkt setzen';
+    // Eingabefelder nur befuellen, wenn das Feld NICHT den Fokus hat -> kein Tipp-Verlust bei
+    // einem Live-Update waehrend der Eingabe (beim Oeffnen sind die Felder unfokussiert).
+    if (fLoc && document.activeElement !== fLoc){ fLoc.value = loc; tpLat = coordOK(d.lat) ? Number(d.lat) : null; tpLon = coordOK(d.lon) ? Number(d.lon) : null; }
+    if (fTime && document.activeElement !== fTime) fTime.value = time;
+    if (fNote && document.activeElement !== fNote) fNote.value = note;
+  }
+  async function saveTreffpunkt(){
+    const r = tpRef(); if (!r) return;
+    const loc = ($('tp-loc').value || '').trim();
+    const time = ($('tp-time').value || '').trim();
+    const note = ($('tp-note').value || '').trim();
+    if (!loc && !time && !note){ $('tp-loc').focus(); return; }   // komplett leer -> nichts speichern
+    const obj = { location: loc };
+    if (coordOK(tpLat) && coordOK(tpLon)){ obj.lat = Number(tpLat); obj.lon = Number(tpLon); }
+    if (time) obj.time = time;
+    if (note) obj.note = note;
+    try { await set(r, obj); } catch(e){ /* Live-Listener reconciled */ }
+  }
+  if (tpScreen){
+    const tpMod = document.querySelector('#detail .mod[data-open="treffpunkt"]');
+    if (tpMod) tpMod.addEventListener('click', openTreffpunkt);   // zusaetzlich zum generischen [data-open]
+    const tpClose = tpScreen.querySelector('[data-close="treffpunkt"]');
+    if (tpClose) tpClose.addEventListener('click', closeTreffpunkt);
+    const saveBtn = $('tp-save-btn'); if (saveBtn) saveBtn.addEventListener('click', saveTreffpunkt);
+    // Ort via geteiltem Photon-Picker (0020/0021): Auswahl -> Koordinaten; Tippen verwirft sie.
+    attachPhotonAC($('tp-loc'), $('tp-loc-ac'),
+      ({ label, lat, lon }) => { $('tp-loc').value = label; tpLat = coordOK(lat) ? Number(lat) : null; tpLon = coordOK(lon) ? Number(lon) : null; },
+      () => { tpLat = null; tpLon = null; });
+  }
+  if (DEBUG) Object.assign(window.__cp, { openTreffpunkt, renderTreffpunkt, saveTreffpunkt });
 
   // ---- Speichern: neues Event anlegen (push) ODER bestehendes updaten (update) ----
   let creating = false;
@@ -3198,6 +3757,13 @@
     return `${calState.year}-${String(calState.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
   }
   function memberAvail(memberId){ return (availabilityCache && availabilityCache[memberId]) || {}; }
+  // Verfuegbarkeits-Zustand eines RTDB-Werts (Ticket 0033, Teil 4): 'weg' | 'frei' | null.
+  // LEGACY-DEFENSIV: alter binaerer Wert true == 'weg' (abwesend) -> bricht 0008-Altdaten nicht.
+  function availStateOf(val){
+    if (val === true || val === 'weg') return 'weg';
+    if (val === 'frei') return 'frei';
+    return null;
+  }
 
   function renderCalendar(){
     const grid = $('cal-grid'); if (!grid) return;
@@ -3229,14 +3795,19 @@
       const iso = calISO(d);
       let cls = 'cal-day';
       if (isThisMonth && d === todayD) cls += ' today';
-      // fremde Abwesenheit: irgendein ANDERES Mitglied an diesem Tag abwesend
-      let other = false;
+      const myState = availStateOf(myAvail[iso]);             // 'weg' | 'frei' | null
+      // fremde Zustaende sammeln: jemand abwesend (weg) und/oder jemand "hat Zeit" (frei)
+      let otherWeg = false, otherFrei = false;
       for (const mid in availabilityCache){
         if (mid === myId) continue;
-        if (availabilityCache[mid] && availabilityCache[mid][iso]){ other = true; break; }
+        const st = availStateOf(availabilityCache[mid] && availabilityCache[mid][iso]);
+        if (st === 'weg') otherWeg = true;
+        else if (st === 'frei') otherFrei = true;
       }
-      if (myAvail[iso]) cls += ' av-me';                       // eigene Abwesenheit
-      if (other) cls += ' av-other';                          // fremde Abwesenheit
+      if (myState === 'weg') cls += ' av-me';                 // eigene Abwesenheit (rot)
+      else if (myState === 'frei') cls += ' free-me';         // eigenes "hat Zeit" (gruen)
+      if (otherWeg) cls += ' av-other';                      // fremde Abwesenheit (Vorrang als Konflikt-Signal)
+      else if (otherFrei) cls += ' free-other';              // sonst: fremdes "hat Zeit"
       const dot = eventDots[d] ? `<span class="dot" style="background:${eventDots[d]}"></span>` : '';
       h += `<div class="${cls}" data-day="${d}">${d}${dot}</div>`;
     }
@@ -3272,19 +3843,21 @@
     openDetail(eventDetailData(id, e));
   }
 
-  // Tag-Klick toggelt die EIGENE Abwesenheit; optimistisch lokal, Listener reconciled.
+  // Tag-Klick zykliert den EIGENEN Zustand (Ticket 0033, Teil 4): nichts -> 'frei' (hat Zeit)
+  // -> 'weg' (abwesend) -> nichts. Optimistisch lokal, Listener reconciled.
   async function toggleAvailability(day){
     if (!state.room || !state.memberId){ toast('Erst einem Raum beitreten'); return; }
     const iso = calISO(day);
-    const currently = !!memberAvail(state.memberId)[iso];
+    const cur = availStateOf(memberAvail(state.memberId)[iso]);     // null | 'frei' | 'weg'
+    const next = cur === null ? 'frei' : (cur === 'frei' ? 'weg' : null);
     if (!availabilityCache[state.memberId]) availabilityCache[state.memberId] = {};
-    if (currently) delete availabilityCache[state.memberId][iso];
-    else availabilityCache[state.memberId][iso] = true;
+    if (next === null) delete availabilityCache[state.memberId][iso];
+    else availabilityCache[state.memberId][iso] = next;
     renderCalendar();
     const path = `rooms/${state.room}/availability/${state.memberId}/${iso}`;
     try {
-      if (currently) await remove(ref(db, path));
-      else await set(ref(db, path), true);
+      if (next === null) await remove(ref(db, path));
+      else await set(ref(db, path), next);                          // 'frei' | 'weg'
     } catch(e){ /* Schreibfehler -> Live-Listener korrigiert auf den RTDB-Stand */ }
   }
   function calShiftMonth(delta){
