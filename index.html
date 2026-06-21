@@ -67,8 +67,8 @@
   .avatar:first-child { margin-left:0; }
   .avatar.more { background:#3A3A3C; color:var(--label-2); font-size:11px; }
   /* Foto-Avatare (Ticket 0024): Google-Foto fuellt den runden Rahmen, sonst Initialen */
-  .avatar.has-photo, .pav.has-photo { padding:0; overflow:hidden; background:#2C2C2E; }
-  .avatar.has-photo img, .pav.has-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar.has-photo, .pav.has-photo, .pav-sm.has-photo { padding:0; overflow:hidden; background:#2C2C2E; }
+  .avatar.has-photo img, .pav.has-photo img, .pav-sm.has-photo img { width:100%; height:100%; object-fit:cover; display:block; }
   .going { font-size:14px; color:var(--label-2); font-weight:500; letter-spacing:-0.2px; }
   .going b { color:var(--green); font-weight:600; }
   .card-deadline { display:flex; align-items:center; gap:6px; margin-top:14px; padding-top:13px; border-top:0.5px solid var(--separator); color:var(--label-2); font-size:13px; letter-spacing:-0.1px; }
@@ -443,11 +443,18 @@
   .si-error.show { display:block; }
   /* Profil-/Abmelden-Block im Crew-Tab (Ticket 0024) */
   .me-row { display:flex; align-items:center; gap:12px; background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); padding:12px 14px; margin:0 0 16px; }
-  .me-av { width:40px; height:40px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:600; background:#2C2C2E; overflow:hidden; }
-  .me-av img { width:100%; height:100%; object-fit:cover; display:block; }
+  /* Avatar ist ein Button (Ticket 0026): anklickbar zum Profilbild-Upload, mit
+     "+"-Badge als Affordanz. overflow sichtbar fuer den Badge, das Bild selbst
+     wird ueber border-radius am img rund beschnitten. */
+  .me-av { width:40px; height:40px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:600; background:#2C2C2E; position:relative; border:none; padding:0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .me-av img { width:100%; height:100%; object-fit:cover; display:block; border-radius:50%; }
+  .me-av::after { content:'+'; position:absolute; right:-2px; bottom:-2px; width:18px; height:18px; border-radius:50%; background:var(--accent); color:#fff; font-size:13px; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center; border:2px solid var(--card); box-sizing:border-box; pointer-events:none; }
+  .me-av:active { transform:scale(0.96); }
   .me-info { flex:1; min-width:0; }
   .me-name { font-size:15px; font-weight:600; letter-spacing:-0.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .me-sub { font-size:12px; color:var(--label-2); margin-top:1px; }
+  .me-photo-btn { display:inline-block; margin-top:2px; padding:0; border:none; background:none; color:var(--accent-text); font-size:12px; font-weight:600; letter-spacing:-0.1px; cursor:pointer; }
+  .me-photo-btn:active { opacity:0.6; }
   .me-signout { flex-shrink:0; border:none; background:var(--card-2); color:var(--accent-text); font-size:14px; font-weight:600; padding:9px 14px; border-radius:12px; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
   .me-signout:active { transform:scale(0.96); }
 </style>
@@ -466,7 +473,7 @@
           <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
           Mit Google anmelden
         </button>
-        <div class="si-hint">Melde dich mit deinem Google-Konto an. Dein Name und Foto kommen aus dem Konto.</div>
+        <div class="si-hint">Melde dich mit deinem Google-Konto an. Dein Name wird übertragen, deine Login-Daten werden gespeichert.</div>
         <div class="si-error" id="signin-error" role="alert"></div>
       </div>
     </div>
@@ -526,15 +533,19 @@
             Teilen
           </button>
         </div>
-        <!-- Profil + Abmelden (Ticket 0024): Google-Identitaet sichtbar, Logout-Knopf -->
+        <!-- Profil + Abmelden (Ticket 0024): Identitaet sichtbar, Logout-Knopf.
+             Ticket 0026: Avatar ist anklickbar (eigenes Profilbild hochladen),
+             zusaetzlich der Text-Knopf "Profilbild aendern". -->
         <div class="me-row" id="me-row">
-          <div class="me-av" id="me-av"></div>
+          <button class="me-av" id="me-av" type="button" aria-label="Profilbild ändern"></button>
           <div class="me-info">
             <div class="me-name" id="me-name">&ndash;</div>
-            <div class="me-sub">Angemeldet mit Google</div>
+            <button class="me-photo-btn" id="me-photo-btn" type="button">Profilbild ändern</button>
           </div>
           <button class="me-signout" id="signout-btn" type="button">Abmelden</button>
         </div>
+        <!-- Bildauswahl vom Geraet (Ticket 0026); versteckt, ueber Avatar/Knopf ausgeloest -->
+        <input type="file" id="me-photo-input" accept="image/*" style="display:none" aria-hidden="true" tabindex="-1">
         <div class="section-label" style="padding:0 4px">Deine Gruppen</div>
         <!-- Gruppen-Feature folgt spaeter (nur Empty-State, NICHT bauen). Der fruehere
              "Gruppe erstellen"-Button oeffnete den Dummy-Crew-Screen (Fake-Leute) und
@@ -1080,11 +1091,15 @@
          ownerUid:           "<google-uid>"
                                // Ersteller-uid (Ticket 0024); NUR beim Anlegen gesetzt.
                                // Vorbereitung Host-Rechte + P6; noch KEINE Rechte-Erzwingung.
-         members/{uid}:      { name, photo?, color }
-                               // Mitglieder per Google-uid (Ticket 0024). name/photo aus
-                               // dem Google-Konto (displayName/photoURL). color = Hex ohne
-                               // '#', z.B. "5E5CE6". Legacy (vor 0024): Schluessel war ein
-                               // push-Key (anonyme memberId), photo fehlt -> Initialen-Avatar.
+         members/{uid}:      { name, color, photoData? }
+                               // Mitglieder per Google-uid (Ticket 0024). name aus dem
+                               // Google-Konto (displayName). color = Hex ohne '#', z.B.
+                               // "5E5CE6". photoData (Ticket 0026): optionale, selbst
+                               // hochgeladene Base64-Bild-data-URL (client verkleinert ->
+                               // kompakt). Quelle aller Avatare; fehlt -> Initialen. Das
+                               // Google-Foto (photoURL) wird NICHT mehr als Avatar genutzt.
+                               // Legacy-Feld photo (vor 0026, Google-URL) bleibt ggf. liegen,
+                               // wird aber ignoriert.
          events/{eventId}:   { type, name, location, dateRange, status,
                                description, modules, participants, createdBy,
                                createdAt, startDate?, endDate?, deadline?, deadlineISO?,
@@ -1123,7 +1138,7 @@
   // Identitaet seit 0024 ueber die Google-uid. state.memberId == state.uid -> bestehende
   // Member-/Teilnehmer-/Availability-Logik (memberId-basiert) laeuft unveraendert weiter,
   // nur dass der Schluessel jetzt die stabile uid statt einer anonymen push-ID ist.
-  const state = { room:null, name:null, memberId:null, uid:null, photo:null, color:null };
+  const state = { room:null, name:null, memberId:null, uid:null, photo:null, photoData:null, color:null };
   let membersCache = {};
   let lastEvents = {};
   let availabilityCache = {};                 // { memberId: { 'YYYY-MM-DD': true } } (Ticket 0008)
@@ -1162,13 +1177,25 @@
     if (em && em.includes('@')){ const p = em.split('@')[0].trim(); if (p) return p; }
     return 'Unbenannt';
   }
-  // Avatar-Baustein: Foto (sicher, https) -> <img>, sonst Initialen auf Farbe.
-  // referrerpolicy=no-referrer: Google-CDN liefert sonst teils 403. Genutzt von
-  // Card-, Crew- und Detail-Avataren. m kann ein Legacy-Member ohne photo sein.
+  /* Eigenes Profilbild (Ticket 0026): NUR kompakte Base64-Bild-data-URLs zulassen.
+     Der Zeichensatz nach dem Praefix ist auf Base64 (+ Whitespace) begrenzt -> kein
+     javascript:/<script>-/Anfuehrungszeichen-Payload moeglich; in einem doppelt
+     gequoteten Attribut (zusaetzlich esc()) damit injektionsfrei. Laenge gedeckelt
+     (RTDB schlank). Das Google-Foto (photoURL) wird hier bewusst NICHT mehr als
+     Avatar-Quelle akzeptiert (siehe Ticket-ANNAHME): Quelle ist ausschliesslich
+     das selbst hochgeladene photoData; ohne -> Initialen. */
+  function safePhotoData(u){
+    u = String(u || '');
+    if (u.length > 400000) return '';                       // absurd grosse Werte ignorieren
+    return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/.test(u) ? u : '';
+  }
+  // Avatar-Baustein: eigenes Bild (photoData) -> <img>, sonst Initialen auf Farbe.
+  // Genutzt von Card-, Crew- und Detail-Avataren. m kann ein Legacy-Member ohne
+  // photoData sein -> Initialen. Google-Foto wird nicht mehr automatisch genutzt.
   function avatarMarkup(m, cls){
     cls = cls || 'avatar';
-    const ph = safePhotoURL(m && m.photo);
-    if (ph) return `<div class="${cls} has-photo"><img src="${esc(ph)}" alt="" referrerpolicy="no-referrer"></div>`;
+    const ph = safePhotoData(m && m.photoData);
+    if (ph) return `<div class="${cls} has-photo"><img src="${esc(ph)}" alt=""></div>`;
     return `<div class="${cls}" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`;
   }
   function genRoomCode(){
@@ -1230,9 +1257,11 @@
       // Self-Duplikat), ganz ohne localStorage-memberId-Logik -- die uid IST die stabile
       // Identitaet (Reload-Persistenz uebernimmt Firebase-Auth).
       state.memberId = state.uid;
-      const member = { name, color: state.color };
-      if (state.photo) member.photo = state.photo;   // Google-Foto, falls vorhanden
-      await set(ref(db, `rooms/${room}/members/${state.uid}`), member);
+      // update (nicht set): schreibt nur Name/Farbe und laesst ein bereits gesetztes,
+      // selbst hochgeladenes photoData unangetastet (Ticket 0026). Ein erneuter Join
+      // (Reload/Wiedereintritt) darf das eigene Bild nicht ueberschreiben. Das
+      // Google-Foto wird bewusst NICHT mehr geschrieben (nicht mehr Avatar-Quelle).
+      await update(ref(db, `rooms/${room}/members/${state.uid}`), { name, color: state.color });
       // Home zeigen + Live-Listener
       $('onboarding').classList.remove('open');
       subscribeRoom(room);
@@ -1255,15 +1284,94 @@
     $('onboarding').classList.remove('open');
     const d = $('detail'); if (d) d.classList.remove('open');   // Detail nie ueber dem Gate
   }
-  // Profil-Block (Crew-Tab): eigener Name + Foto/Initiale (Ticket 0024).
+  // Profil-Block (Crew-Tab): eigener Name + eigenes Bild/Initiale (Ticket 0024/0026).
+  // Bild via DOM-img-src (kein innerHTML) -- photoData ist zwar validiert, das
+  // Setzen per Property haelt die Bildquelle grundsaetzlich aus dem Markup-Pfad.
   function renderMe(){
     const nm = $('me-name'); if (nm) nm.textContent = state.name || '–';
     const av = $('me-av'); if (!av) return;
-    const ph = safePhotoURL(state.photo);
+    const ph = safePhotoData(state.photoData);
     av.classList.toggle('has-photo', !!ph);
     av.style.background = ph ? '' : ('#' + safeColor(state.color));
-    av.innerHTML = ph ? `<img src="${esc(ph)}" alt="" referrerpolicy="no-referrer">` : esc(initials(state.name));
+    if (ph){
+      av.textContent = '';
+      const img = document.createElement('img');
+      img.src = ph; img.alt = '';
+      av.appendChild(img);
+    } else {
+      av.textContent = initials(state.name);
+    }
   }
+  /* ---- Eigenes Profilbild (Ticket 0026) ----
+     Bild client-seitig verkleinern + als kompakte JPEG-Base64-data-URL am eigenen
+     Mitglied (rooms/{room}/members/{uid}/photoData) ablegen -- KEIN Firebase Storage,
+     kein Billing. Klein halten ist Pflicht (jeder Crew-Member zieht die Avatare). */
+  const PHOTO_MAX_EDGE = 200;            // max. Kantenlaenge (px), Seitenverhaeltnis bleibt
+  const PHOTO_MAX_BYTES = 50 * 1024;     // Deckel fuer die data-URL (~50KB) -> RTDB schlank
+
+  // Eigenes photoData aus dem eigenen Mitglied uebernehmen -> Profil-Avatar zeigt es.
+  function syncMyPhotoData(){
+    const me = (state.uid && membersCache) ? membersCache[state.uid] : null;
+    state.photoData = (me && safePhotoData(me.photoData)) || null;
+    renderMe();
+  }
+  // Bild auf max. Kante skalieren (Seitenverhaeltnis halten) -> JPEG-data-URL.
+  function drawToJpeg(img, maxEdge, quality){
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (!w || !h) return '';
+    const scale = Math.min(1, maxEdge / Math.max(w, h));
+    const cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    ctx.drawImage(img, 0, 0, cw, ch);
+    try { return canvas.toDataURL('image/jpeg', quality); } catch(e){ return ''; }
+  }
+  // Schleife: Qualitaet, dann Kante senken, bis die data-URL unter den Deckel passt.
+  function compressImage(img){
+    let edge = PHOTO_MAX_EDGE, quality = 0.7;
+    for (let attempt = 0; attempt < 8; attempt++){
+      const dataUrl = drawToJpeg(img, edge, quality);
+      if (dataUrl && dataUrl.length <= PHOTO_MAX_BYTES) return dataUrl;
+      if (quality > 0.4) quality -= 0.15; else edge = Math.max(48, Math.round(edge * 0.8));
+    }
+    const last = drawToJpeg(img, 48, 0.4);   // letzter, sehr kleiner Versuch
+    return (last && last.length <= PHOTO_MAX_BYTES) ? last : '';
+  }
+  // Gewaehlte Datei -> lesen -> Image -> verkleinern -> speichern. Defensive:
+  // abgebrochen/keine Datei -> nichts; Nicht-Bild -> Hinweis, kein Crash.
+  function handlePhotoFile(file){
+    if (!file) return;                                           // abgebrochen
+    if (!/^image\//i.test(file.type || '')){ toast('Bitte ein Bild auswaehlen'); return; }
+    const reader = new FileReader();
+    reader.onerror = () => toast('Bild konnte nicht gelesen werden');
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => toast('Bild konnte nicht geladen werden');
+      img.onload = () => {
+        let dataUrl = '';
+        try { dataUrl = compressImage(img); } catch(e){ dataUrl = ''; }
+        if (!dataUrl){ toast('Bild konnte nicht verarbeitet werden'); return; }
+        savePhotoData(dataUrl);
+      };
+      img.src = reader.result;
+    };
+    try { reader.readAsDataURL(file); } catch(e){ toast('Bild konnte nicht gelesen werden'); }
+  }
+  async function savePhotoData(dataUrl){
+    if (!state.uid || !state.room){ toast('Erst einem Raum beitreten'); return; }
+    const safe = safePhotoData(dataUrl);
+    if (!safe){ toast('Bild ungueltig'); return; }
+    try {
+      // nur das eine Feld setzen -> Name/Farbe bleiben; Live-Listener zieht es nach
+      // (renderMe/renderCrew/Picker aktualisieren sich von selbst).
+      await update(ref(db, `rooms/${state.room}/members/${state.uid}`), { photoData: safe });
+      toast('Profilbild aktualisiert');
+    } catch(e){ toast('Speichern fehlgeschlagen'); }
+  }
+  if (DEBUG) window.__cp.handlePhotoFile = handlePhotoFile;     // Test-Beleg (nur localhost)
+
   // Nach Anmeldung der Raum-Flow: ?room=CODE -> direkt beitreten (Identitaet aus Google),
   // sonst Onboarding (Raum-Code waehlen). Reload bleibt dank Firebase-Auth angemeldet.
   function startRoomFlow(){
@@ -1339,6 +1447,7 @@
     renderRoomCode();                            // Raum-Code sichtbar machen (Ticket 0003)
     onValue(ref(db, `rooms/${room}/members`), snap => {
       membersCache = snap.val() || {};
+      syncMyPhotoData();                         // eigenes Bild aus dem Mitglied uebernehmen (Ticket 0026)
       renderEvents(lastEvents);
       renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
     });
@@ -1832,8 +1941,12 @@
      (esc-geschuetzt) und wird beim Schreiben gegen membersCache validiert. */
   function partRowHTML(id, m){
     const sel = crState.selected.has(id) ? ' sel' : '';
+    const ph = safePhotoData(m && m.photoData);        // eigenes Bild (0026) oder Initialen
+    const av = ph
+      ? `<div class="pav-sm has-photo"><img src="${esc(ph)}" alt=""></div>`
+      : `<div class="pav-sm" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`;
     return `<div class="pick-row pick-mem has-av${sel}" data-mid="${esc(id)}">`
-      + `<div class="pav-sm" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`
+      + av
       + `<div class="pick-body"><div class="pick-name">${esc((m && m.name) || '')}</div></div>`
       + `<div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>`;
   }
@@ -1857,8 +1970,16 @@
       Object.entries(membersCache || {}).filter(([id]) => id !== state.memberId && crState.selected.has(id)).forEach(([id, m]) => {
         const d = document.createElement('div');
         d.className = 'avatar';
-        d.style.background = '#' + safeColor(m && m.color);
-        d.textContent = initials(m && m.name);   // textContent -> kein HTML-Injection
+        const ph = safePhotoData(m && m.photoData);   // eigenes Bild (0026) oder Initialen
+        if (ph){
+          d.classList.add('has-photo');
+          const img = document.createElement('img');  // img-src via DOM-Property (kein innerHTML)
+          img.src = ph; img.alt = '';
+          d.appendChild(img);
+        } else {
+          d.style.background = '#' + safeColor(m && m.color);
+          d.textContent = initials(m && m.name);       // textContent -> kein HTML-Injection
+        }
         frag.appendChild(d);
       });
       box.insertBefore(frag, btn);
@@ -2432,7 +2553,8 @@
   renderCalendar();   // Kalender-Tab initial rendern (leer bis Live-Daten kommen)
   if (DEBUG) Object.assign(window.__cp, {                       // Test-Belege (nur localhost)
     renderCalendar, renderUpcoming, toggleAvailability, calShiftMonth, openEventById,
-    calState, getAvail: () => availabilityCache
+    calState, getAvail: () => availabilityCache,
+    renderParticipantPicker, renderCrew, renderMe, avatarMarkup, safePhotoData   // Ticket 0026
   });
 
   // Teilnehmer-Picker (Ticket 0016): echte Members, Mehrfach-Auswahl.
@@ -2466,6 +2588,16 @@
   // Auth- + Onboarding-Wiring (Ticket 0024)
   $('signin-btn').addEventListener('click', startSignIn);       // Mit Google anmelden
   $('signout-btn').addEventListener('click', doSignOut);        // Abmelden
+  // Profilbild-Upload (Ticket 0026): Avatar ODER Text-Knopf oeffnet die Bildauswahl.
+  const mePhotoInput = $('me-photo-input');
+  const openPhotoPicker = () => { if (mePhotoInput) mePhotoInput.click(); };
+  if ($('me-av')) $('me-av').addEventListener('click', openPhotoPicker);
+  if ($('me-photo-btn')) $('me-photo-btn').addEventListener('click', openPhotoPicker);
+  if (mePhotoInput) mePhotoInput.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    handlePhotoFile(f);
+    e.target.value = '';                                        // gleiche Datei erneut waehlbar
+  });
   $('ob-newroom').addEventListener('click', () => { $('ob-room').value = genRoomCode(); });
   $('ob-join').addEventListener('click', join);
   $('ob-room').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });   // Enter -> beitreten
