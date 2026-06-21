@@ -366,6 +366,14 @@
   .besorg-ev span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .besorg-who { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--label-2); }
   .besorg-who .av-sm { margin-left:0; width:20px; height:20px; border-width:0; font-size:9px; }
+  /* Sortier-Control + Gruppierung (Ticket 0031) */
+  .besorg-sort { margin:4px 16px 8px; background:rgba(118,118,128,0.24); border-radius:var(--r-pill); padding:3px; display:flex; gap:2px; }
+  .bs-btn { flex:1; border:none; background:none; padding:8px 0; font-size:13px; font-weight:600; color:var(--label-2); cursor:pointer; border-radius:9px; letter-spacing:-0.2px; transition:color 0.2s ease, background 0.2s ease; }
+  .bs-btn.active { color:var(--label); background:#636366; box-shadow:0 2px 6px rgba(0,0,0,0.4); }
+  .besorg-groups { display:flex; flex-direction:column; gap:16px; }
+  .besorg-grouplabel { margin:2px 0 -2px; padding:0 6px; }
+  .besorg-ev.clickable { cursor:pointer; }
+  .besorg-ev.clickable:active { opacity:0.6; }
   /* voting */
   .opt.voted { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-tint); }
   .opt-vote-badge { display:flex; align-items:center; gap:4px; background:var(--accent-tint); color:var(--accent-text); font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
@@ -628,9 +636,17 @@
         <button class="bf-btn" type="button" data-bf="fueralle">Für alle</button>
         <button class="bf-btn" type="button" data-bf="alle">Alle</button>
       </div>
+      <!-- Sortier-Control (Ticket 0031): Default Events (gruppiert); Termin (frueheste
+           zuerst nach startDate); Wer bringt's (gruppiert nach Zuweisung). Rein
+           clientseitig auf der gefilterten Menge -> mit dem Filter (0030) kombiniert. -->
+      <div class="besorg-sort" id="besorg-sort">
+        <button class="bs-btn active" type="button" data-bs="events">Events</button>
+        <button class="bs-btn" type="button" data-bs="termin">Termin</button>
+        <button class="bs-btn" type="button" data-bs="wer">Wer bringt’s</button>
+      </div>
       <main class="list" id="besorg-list-wrap">
         <div class="besorg-empty" id="besorg-empty" style="display:none"></div>
-        <div class="fgroup" id="besorg-list"></div>
+        <div class="besorg-groups" id="besorg-list"></div>
       </main>
     </div>
 
@@ -2137,6 +2153,7 @@
   const besorgListEl = $('besorg-list');
   const besorgEmptyEl = $('besorg-empty');
   let besorgFilter = 'meine';                    // Default laut Ticket: persoenliche Besorgliste
+  let besorgSort = 'events';                     // Default laut Ticket 0031: nach Events gruppiert
 
   // Offene Items ueber alle Events sammeln: [{eventId, eventName, evCreatedAt, itemId, it}]
   function collectOpenItems(){
@@ -2185,7 +2202,71 @@
     }
     besorgListEl.style.display = items.length ? '' : 'none';
     besorgListEl.innerHTML = '';                  // kein innerHTML aus Daten -> DOM-Bau pro Item
-    items.forEach(e => besorgListEl.appendChild(buildBesorgRow(e)));
+    // Sortierung/Gruppierung (Ticket 0031) rein clientseitig auf der gefilterten Menge.
+    besorgSections(items).forEach(sec => {
+      if (sec.label){
+        const h = document.createElement('div');
+        h.className = 'section-label besorg-grouplabel';
+        h.textContent = sec.label;                // textContent -> XSS-sicher (Event-/Mitgliedsname)
+        besorgListEl.appendChild(h);
+      }
+      const g = document.createElement('div');
+      g.className = 'fgroup';
+      sec.entries.forEach(e => g.appendChild(buildBesorgRow(e)));
+      besorgListEl.appendChild(g);
+    });
+  }
+  // Gefilterte Items in Abschnitte zerlegen -- je nach besorgSort: Events (gruppiert nach
+  // Event), Termin (flache Liste nach Event-startDate aufsteigend) oder Wer bringt's
+  // (gruppiert nach Zuweisung). collectOpenItems liefert bereits eine stabile Reihenfolge
+  // (Event-Anlage, dann Item-Anlage); die Gruppierungen bauen stabil darauf auf.
+  function besorgSections(items){
+    if (besorgSort === 'termin'){
+      // ES-stabile Sortierung: gleiche startDate behaelt die collectOpenItems-Ordnung.
+      const sorted = items.slice().sort((a, b) => {
+        const sa = eventStartKey(a.eventId), sb = eventStartKey(b.eventId);
+        return sa < sb ? -1 : (sa > sb ? 1 : 0);   // ISO yyyy-mm-dd -> lexikografisch = chronologisch
+      });
+      return [{ label: '', entries: sorted }];     // flache Liste, kein Gruppen-Heading
+    }
+    if (besorgSort === 'wer') return besorgGroupByAssignee(items);
+    return besorgGroupByEvent(items);              // 'events' (Default)
+  }
+  // startDate des Events als Sortier-Key; fehlt/ungueltig -> ans Ende (defensiv, kein Crash).
+  function eventStartKey(eventId){
+    const ev = (lastEvents || {})[eventId];
+    const sd = ev && ev.startDate;
+    return (typeof sd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sd)) ? sd : '\uffff';
+  }
+  // Events-Gruppierung: pro Event ein Abschnitt (Event-Name als Heading); Reihenfolge =
+  // collectOpenItems (Anlage-Reihenfolge der Events) -> stabil.
+  function besorgGroupByEvent(items){
+    const secs = [], idx = {};
+    items.forEach(e => {
+      let s = idx[e.eventId];
+      if (!s){ s = { label: e.eventName || 'Event', entries: [] }; idx[e.eventId] = s; secs.push(s); }
+      s.entries.push(e);
+    });
+    return secs;
+  }
+  // Wer-bringt's-Gruppierung: pro Mitglied ein Abschnitt; ohne Zuweisung -> "Fuer alle";
+  // Zuweisung auf ausgetretenes Mitglied -> Fallback "Unbekannt" (defensiv, kein Crash).
+  function besorgGroupByAssignee(items){
+    const known = {}, unknown = [], forall = [];
+    items.forEach(e => {
+      const as = e.it.assignee;
+      if (as == null){ forall.push(e); return; }
+      const m = membersCache ? membersCache[as] : null;
+      if (m){ (known[as] = known[as] || { label: m.name || 'Mitglied', entries: [] }).entries.push(e); }
+      else { unknown.push(e); }
+    });
+    const secs = [];
+    Object.keys(known)
+      .sort((a, b) => String(known[a].label).localeCompare(String(known[b].label), 'de'))
+      .forEach(uid => secs.push(known[uid]));
+    if (unknown.length) secs.push({ label: 'Unbekannt', entries: unknown });
+    if (forall.length)  secs.push({ label: 'Für alle', entries: forall });
+    return secs;
   }
   function buildBesorgRow(entry){
     const { eventName, eventId, itemId, it } = entry;
@@ -2220,14 +2301,31 @@
     // Zeile 2: Event-Bezug (+ in "Alle" wer es bringt)
     const sub = document.createElement('div');
     sub.className = 'besorg-sub';
+    // Event-Bezug ist anklickbar (Ticket 0031): oeffnet das Detail GENAU dieses Events ueber
+    // die bestehende openDetail-Logik. Das Detail ist ein Overlay ueber dem Besorgen-Tab ->
+    // Schliessen fuehrt automatisch in die Besorgliste zurueck (Origin bleibt erhalten, kein
+    // Tab-Wechsel). Defensiv: nur springen, wenn das Event noch im Cache existiert.
     const ev = document.createElement('span');
-    ev.className = 'besorg-ev';
+    ev.className = 'besorg-ev clickable';
+    ev.setAttribute('role', 'button');
+    ev.setAttribute('tabindex', '0');
+    ev.setAttribute('aria-label', 'Zum Event: ' + (eventName || 'Event'));
     ev.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg>';
     const evName = document.createElement('span');
     evName.textContent = eventName;                // textContent -> XSS-sicher
     ev.appendChild(evName);
+    const jumpToEvent = (e) => {
+      if (e) e.stopPropagation();                  // nie das Abhaken/Row-Handling mit ausloesen
+      const evt = (lastEvents || {})[eventId];
+      if (evt) openDetail(eventDetailData(eventId, evt));
+    };
+    ev.addEventListener('click', jumpToEvent);
+    ev.addEventListener('keydown', (e) => {        // Tastatur-Zugaenglichkeit (Enter/Leertaste)
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); jumpToEvent(e); }
+    });
     sub.appendChild(ev);
-    if (besorgFilter === 'alle'){                  // in "Alle": wer bringt's mit
+    if (besorgFilter === 'alle' && besorgSort !== 'wer'){  // in "Alle" wer bringt's mit -- bei
+                                                   // Wer-bringt's-Sort redundant (Gruppen-Heading)
       const who = document.createElement('span');
       who.className = 'besorg-who';
       const m = (it.assignee && membersCache) ? membersCache[it.assignee] : null;
@@ -2267,8 +2365,20 @@
       });
     });
   }
-  if (DEBUG) Object.assign(window.__cp, { renderBesorg, collectOpenItems,   // Test-Belege (0030)
-    setBesorgFilter: f => { besorgFilter = f; renderBesorg(); } });
+  // Sortier-Umschalter (Events/Termin/Wer bringt's) -- Ticket 0031
+  const besorgSortEl = $('besorg-sort');
+  if (besorgSortEl){
+    besorgSortEl.querySelectorAll('.bs-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        besorgSort = btn.dataset.bs || 'events';
+        besorgSortEl.querySelectorAll('.bs-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderBesorg();
+      });
+    });
+  }
+  if (DEBUG) Object.assign(window.__cp, { renderBesorg, collectOpenItems,   // Test-Belege (0030/0031)
+    setBesorgFilter: f => { besorgFilter = f; renderBesorg(); },
+    setBesorgSort:   s => { besorgSort = s;   renderBesorg(); } });
 
   // Voting: Stimme setzen (Badge wandert mit)
   document.querySelectorAll('.vote-opt').forEach(o => o.addEventListener('click', () => {
