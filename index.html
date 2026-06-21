@@ -457,6 +457,13 @@
   .me-photo-btn:active { opacity:0.6; }
   .me-signout { flex-shrink:0; border:none; background:var(--card-2); color:var(--accent-text); font-size:14px; font-weight:600; padding:9px 14px; border-radius:12px; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
   .me-signout:active { transform:scale(0.96); }
+  /* Avatar-Galerie (Ticket 0027): scrollbares Raster mit ~50 DiceBear-Avataren zur Auswahl. */
+  .av-gallery-wrap { margin:2px 0 4px; }
+  .av-gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(52px,1fr)); gap:10px; max-height:228px; overflow-y:auto; padding:10px 4px; -webkit-overflow-scrolling:touch; }
+  .av-opt { width:52px; height:52px; border-radius:50%; border:2px solid transparent; background:#2C2C2E; padding:0; overflow:hidden; cursor:pointer; -webkit-tap-highlight-color:transparent; flex-shrink:0; transition:transform 0.12s var(--ease); }
+  .av-opt img { width:100%; height:100%; object-fit:cover; display:block; }
+  .av-opt:active { transform:scale(0.92); }
+  .av-opt.selected { border-color:var(--accent); }
 </style>
 </head>
 <body>
@@ -546,6 +553,12 @@
         </div>
         <!-- Bildauswahl vom Geraet (Ticket 0026); versteckt, ueber Avatar/Knopf ausgeloest -->
         <input type="file" id="me-photo-input" accept="image/*" style="display:none" aria-hidden="true" tabindex="-1">
+        <!-- Avatar-Galerie (Ticket 0027): ~50 coole DiceBear-Avatare zur Auswahl. Bilder
+             werden per JS gerendert (loading=lazy) -> nicht alle 50 Requests sofort. -->
+        <div class="av-gallery-wrap">
+          <div class="section-label" style="padding:0 4px">Avatar wählen</div>
+          <div class="av-gallery" id="avatar-gallery" role="list" aria-label="Avatar-Galerie"></div>
+        </div>
         <div class="section-label" style="padding:0 4px">Deine Gruppen</div>
         <!-- Gruppen-Feature folgt spaeter (nur Empty-State, NICHT bauen). Der fruehere
              "Gruppe erstellen"-Button oeffnete den Dummy-Crew-Screen (Fake-Leute) und
@@ -1135,10 +1148,24 @@
   const provider = new GoogleAuthProvider();
 
   const AVATAR_COLORS = ['5E5CE6','FF9500','34C759','FF2D55','00C7BE','AF52DE','007AFF','FF9F0A'];
+
+  /* ---- Avatar-Galerie (Ticket 0027) -- DiceBear, kostenlos, KEIN API-Key/Billing ----
+     Avatare werden rein per Bild-URL geladen (img src), kein SDK/Bundle. Jede Variation
+     = ein {style, seed}. Die erlaubten Stile sind hart whitelisted -> ein aus der RTDB
+     (Testmodus, noch keine Rules) stammender avatar.style kann keine fremde URL/Injection
+     erzeugen (faellt sonst auf den Default-Stil zurueck). */
+  const DICEBEAR_BASE = 'https://api.dicebear.com/9.x';
+  const DICEBEAR_STYLES = ['fun-emoji','adventurer','bottts','notionists','open-peeps'];
+  const DICEBEAR_STYLE_SET = new Set(DICEBEAR_STYLES);
+  const DEFAULT_AVATAR_STYLE = 'fun-emoji';   // cooler, freundlicher Default-Stil (uid-geseedet)
+  // ~50 vordefinierte Optionen: 5 coole Stile x 10 Seeds (= 50). Seed-Worte fuer Abwechslung.
+  const AVATAR_SEEDS = ['Nova','Pixel','Comet','Mango','Zephyr','Ginger','Bandit','Maple','Cosmo','Pepper'];
+  const AVATAR_GALLERY = [];
+  DICEBEAR_STYLES.forEach(st => AVATAR_SEEDS.forEach(sd => AVATAR_GALLERY.push({ style: st, seed: sd })));
   // Identitaet seit 0024 ueber die Google-uid. state.memberId == state.uid -> bestehende
   // Member-/Teilnehmer-/Availability-Logik (memberId-basiert) laeuft unveraendert weiter,
   // nur dass der Schluessel jetzt die stabile uid statt einer anonymen push-ID ist.
-  const state = { room:null, name:null, memberId:null, uid:null, photo:null, photoData:null, color:null };
+  const state = { room:null, name:null, memberId:null, uid:null, photo:null, photoData:null, avatar:null, color:null };
   let membersCache = {};
   let lastEvents = {};
   let availabilityCache = {};                 // { memberId: { 'YYYY-MM-DD': true } } (Ticket 0008)
@@ -1189,15 +1216,67 @@
     if (u.length > 400000) return '';                       // absurd grosse Werte ignorieren
     return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/.test(u) ? u : '';
   }
-  // Avatar-Baustein: eigenes Bild (photoData) -> <img>, sonst Initialen auf Farbe.
-  // Genutzt von Card-, Crew- und Detail-Avataren. m kann ein Legacy-Member ohne
-  // photoData sein -> Initialen. Google-Foto wird nicht mehr automatisch genutzt.
+  /* ---- DiceBear-Avatar (Ticket 0027) ----
+     Seed auf [A-Za-z0-9_-] begrenzen + per encodeURIComponent in die URL -> kein Pfad-
+     /Query-Ausbruch. Stil nur aus der Whitelist (sonst Default). Beides macht die aus
+     der RTDB stammende Avatar-Kennung injektionsfrei (Testmodus hat noch keine Rules). */
+  function safeSeed(s){
+    const m = String(s == null ? '' : s).match(/[A-Za-z0-9_-]+/g);
+    return m ? m.join('').slice(0, 64) : '';
+  }
+  function dicebearUrl(style, seed){
+    const st = DICEBEAR_STYLE_SET.has(style) ? style : DEFAULT_AVATAR_STYLE;
+    const sd = safeSeed(seed) || 'crew';
+    return DICEBEAR_BASE + '/' + st + '/svg?seed=' + encodeURIComponent(sd);
+  }
+  // Gespeicherte Auswahl validieren: nur {kind:'dicebear', style(Whitelist), seed}.
+  function safeAvatar(a){
+    if (!a || typeof a !== 'object' || a.kind !== 'dicebear') return null;
+    if (!DICEBEAR_STYLE_SET.has(a.style)) return null;
+    const seed = safeSeed(a.seed);
+    if (!seed) return null;
+    return { kind:'dicebear', style: a.style, seed };
+  }
+  // Default-Seed pro Konto: die uid (eindeutig, deterministisch). Member-Objekte tragen
+  // ihren Schluessel als _uid (in subscribeRoom injiziert); Legacy ohne uid -> Name+Farbe.
+  function defaultSeedFor(m){
+    const uid = m && (m._uid || m.uid);
+    if (uid) return String(uid);
+    return 'm-' + (safeSeed(m && m.name) || 'x') + '-' + safeColor(m && m.color);
+  }
+  /* Avatar-QUELLE nach Prioritaet (Ticket 0027):
+       1) hochgeladenes Bild (photoData, 0026)
+       2) gewaehlter DiceBear (avatar = {style,seed})
+       3) Default-DiceBear aus der uid (cooler Standard statt Initialen)
+     Initialen sind nur noch der onerror-Fallback (Bild laedt nicht), siehe avatarMarkup. */
+  function avatarSrc(m){
+    const ph = safePhotoData(m && m.photoData);
+    if (ph) return ph;
+    const av = safeAvatar(m && m.avatar);
+    if (av) return dicebearUrl(av.style, av.seed);
+    return dicebearUrl(DEFAULT_AVATAR_STYLE, defaultSeedFor(m));
+  }
+  // Avatar-Baustein: immer ein <img> (Upload -> Auswahl -> uid-Default). Laedt das Bild
+  // nicht (DiceBear aus / offline) -> onerror -> Initialen auf Farbe (letzter Fallback).
+  // initials() liefert nur Buchstaben, safeColor() nur Hex -> data-ini injektionsfrei.
   function avatarMarkup(m, cls){
     cls = cls || 'avatar';
-    const ph = safePhotoData(m && m.photoData);
-    if (ph) return `<div class="${cls} has-photo"><img src="${esc(ph)}" alt=""></div>`;
-    return `<div class="${cls}" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`;
+    const src = avatarSrc(m);
+    const ini = esc(initials(m && m.name));
+    const col = safeColor(m && m.color);
+    return `<div class="${cls} has-photo" style="background:#${col}">`
+      + `<img src="${esc(src)}" alt="" data-ini="${ini}" onerror="cpAvatarFail(this)">`
+      + `</div>`;
   }
+  // onerror-Helfer global (Inline-Handler laeuft im globalen Scope, nicht im Modul-Scope).
+  // Ersetzt das fehlgeschlagene Bild durch die Initialen (textContent -> kein HTML-Inject).
+  function cpAvatarFail(img){
+    const box = img && img.parentNode; if (!box) return;
+    const ini = img.getAttribute('data-ini') || '?';
+    box.classList.remove('has-photo');
+    box.textContent = ini;
+  }
+  window.cpAvatarFail = cpAvatarFail;
   function genRoomCode(){
     const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let s = ''; for (let i=0;i<6;i++) s += A[Math.floor(Math.random()*A.length)];
@@ -1290,17 +1369,18 @@
   function renderMe(){
     const nm = $('me-name'); if (nm) nm.textContent = state.name || '–';
     const av = $('me-av'); if (!av) return;
-    const ph = safePhotoData(state.photoData);
-    av.classList.toggle('has-photo', !!ph);
-    av.style.background = ph ? '' : ('#' + safeColor(state.color));
-    if (ph){
-      av.textContent = '';
-      const img = document.createElement('img');
-      img.src = ph; img.alt = '';
-      av.appendChild(img);
-    } else {
-      av.textContent = initials(state.name);
-    }
+    // Eigener Avatar nach derselben Prioritaet wie ueberall: Upload -> Auswahl -> uid-Default
+    // -> (onerror) Initialen. Bildquelle via DOM-img-src; onerror faellt auf Initialen zurueck.
+    const meM = { name: state.name, color: state.color, photoData: state.photoData, avatar: state.avatar, _uid: state.uid };
+    const src = avatarSrc(meM);
+    av.classList.add('has-photo');
+    av.style.background = '#' + safeColor(state.color);
+    av.textContent = '';
+    const img = document.createElement('img');
+    img.alt = '';
+    img.addEventListener('error', () => { av.classList.remove('has-photo'); av.textContent = initials(state.name); });
+    img.src = src;
+    av.appendChild(img);
   }
   /* ---- Eigenes Profilbild (Ticket 0026) ----
      Bild client-seitig verkleinern + als kompakte JPEG-Base64-data-URL am eigenen
@@ -1309,11 +1389,14 @@
   const PHOTO_MAX_EDGE = 200;            // max. Kantenlaenge (px), Seitenverhaeltnis bleibt
   const PHOTO_MAX_BYTES = 50 * 1024;     // Deckel fuer die data-URL (~50KB) -> RTDB schlank
 
-  // Eigenes photoData aus dem eigenen Mitglied uebernehmen -> Profil-Avatar zeigt es.
+  // Eigenes photoData + gewaehlten Avatar aus dem eigenen Mitglied uebernehmen
+  // -> Profil-Avatar zeigt sie; Galerie markiert die aktive Auswahl (Ticket 0026/0027).
   function syncMyPhotoData(){
     const me = (state.uid && membersCache) ? membersCache[state.uid] : null;
     state.photoData = (me && safePhotoData(me.photoData)) || null;
+    state.avatar = (me && safeAvatar(me.avatar)) || null;
     renderMe();
+    highlightSelectedAvatar();
   }
   // Bild auf max. Kante skalieren (Seitenverhaeltnis halten) -> JPEG-data-URL.
   function drawToJpeg(img, maxEdge, quality){
@@ -1365,12 +1448,61 @@
     if (!safe){ toast('Bild ungueltig'); return; }
     try {
       // nur das eine Feld setzen -> Name/Farbe bleiben; Live-Listener zieht es nach
-      // (renderMe/renderCrew/Picker aktualisieren sich von selbst).
+      // (renderMe/renderCrew/Picker aktualisieren sich von selbst). Upload hat hoechste
+      // Prioritaet -> ueberschreibt eine evtl. vorhandene DiceBear-Auswahl visuell ohnehin.
       await update(ref(db, `rooms/${state.room}/members/${state.uid}`), { photoData: safe });
       toast('Profilbild aktualisiert');
     } catch(e){ toast('Speichern fehlgeschlagen'); }
   }
   if (DEBUG) window.__cp.handlePhotoFile = handlePhotoFile;     // Test-Beleg (nur localhost)
+
+  /* ---- Avatar-Galerie waehlen (Ticket 0027) ----
+     Gewaehlten DiceBear als kompakte Kennung {kind,style,seed} am Mitglied speichern
+     (KEIN Bild-Blob). Dabei ein evtl. hochgeladenes photoData loeschen -> die Auswahl
+     wird sichtbar (sonst wuerde der Upload mit hoeherer Prioritaet gewinnen). "Wer
+     zuletzt waehlt, gilt": spaeterer Upload setzt photoData wieder + gewinnt. */
+  async function saveAvatar(style, seed){
+    if (!state.uid || !state.room){ toast('Erst einem Raum beitreten'); return; }
+    const av = safeAvatar({ kind:'dicebear', style, seed });
+    if (!av){ toast('Avatar ungueltig'); return; }
+    try {
+      await update(ref(db, `rooms/${state.room}/members/${state.uid}`), { avatar: av, photoData: null });
+      toast('Avatar gewählt');
+    } catch(e){ toast('Speichern fehlgeschlagen'); }
+  }
+  // Galerie einmalig aus AVATAR_GALLERY rendern. Bilder loading="lazy" + Container
+  // scrollbar -> nur die sichtbaren Avatare loesen sofort einen Request aus.
+  function renderAvatarGallery(){
+    const box = $('avatar-gallery'); if (!box || box.dataset.built) return;
+    const frag = document.createDocumentFragment();
+    AVATAR_GALLERY.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'av-opt';
+      btn.setAttribute('role', 'listitem');
+      btn.dataset.style = opt.style;
+      btn.dataset.seed = opt.seed;
+      btn.setAttribute('aria-label', 'Avatar ' + opt.style);
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.alt = '';
+      img.src = dicebearUrl(opt.style, opt.seed);
+      btn.appendChild(img);
+      frag.appendChild(btn);
+    });
+    box.appendChild(frag);
+    box.dataset.built = '1';
+    highlightSelectedAvatar();
+  }
+  // Aktive Auswahl in der Galerie markieren (Rahmen) -- rein visuell.
+  function highlightSelectedAvatar(){
+    const box = $('avatar-gallery'); if (!box) return;
+    const av = state.avatar;
+    box.querySelectorAll('.av-opt').forEach(b => {
+      const on = !!av && b.dataset.style === av.style && b.dataset.seed === String(av.seed);
+      b.classList.toggle('selected', on);
+    });
+  }
 
   // Nach Anmeldung der Raum-Flow: ?room=CODE -> direkt beitreten (Identitaet aus Google),
   // sonst Onboarding (Raum-Code waehlen). Reload bleibt dank Firebase-Auth angemeldet.
@@ -1397,6 +1529,7 @@
       if (uid !== prevUid) startRoomFlow();           // nur beim (Neu-)Anmelden den Raum-Flow starten
     } else {
       state.uid = null; state.memberId = null; state.name = null; state.photo = null;
+      state.photoData = null; state.avatar = null;        // kein Konto-Rest beim Abmelden (Ticket 0027)
       renderMe();
       showSignIn();
     }
@@ -1447,7 +1580,14 @@
     renderRoomCode();                            // Raum-Code sichtbar machen (Ticket 0003)
     onValue(ref(db, `rooms/${room}/members`), snap => {
       membersCache = snap.val() || {};
-      syncMyPhotoData();                         // eigenes Bild aus dem Mitglied uebernehmen (Ticket 0026)
+      // uid (= Member-Schluessel) als _uid in jeden Member spiegeln -> avatarMarkup kann
+      // den uid-geseedeten Default-Avatar fuer JEDEN Member bauen, nicht nur fuer sich
+      // selbst (Ticket 0027). Rein lokal; wird nie nach RTDB zurueckgeschrieben.
+      Object.keys(membersCache).forEach(k => {
+        const v = membersCache[k];
+        if (v && typeof v === 'object') v._uid = k;
+      });
+      syncMyPhotoData();                         // eigenes Bild/Avatar aus dem Mitglied uebernehmen (Ticket 0026/0027)
       renderEvents(lastEvents);
       renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
     });
@@ -1941,12 +2081,11 @@
      (esc-geschuetzt) und wird beim Schreiben gegen membersCache validiert. */
   function partRowHTML(id, m){
     const sel = crState.selected.has(id) ? ' sel' : '';
-    const ph = safePhotoData(m && m.photoData);        // eigenes Bild (0026) oder Initialen
-    const av = ph
-      ? `<div class="pav-sm has-photo"><img src="${esc(ph)}" alt=""></div>`
-      : `<div class="pav-sm" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`;
+    // gemeinsame avatarMarkup-Logik (Upload -> Auswahl -> uid-Default -> Initialen), id als
+    // _uid fuer den Default-Seed (Ticket 0027).
+    const mm = (m && typeof m === 'object') ? Object.assign({}, m, { _uid: id }) : { _uid: id };
     return `<div class="pick-row pick-mem has-av${sel}" data-mid="${esc(id)}">`
-      + av
+      + avatarMarkup(mm, 'pav-sm')
       + `<div class="pick-body"><div class="pick-name">${esc((m && m.name) || '')}</div></div>`
       + `<div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>`;
   }
@@ -1968,18 +2107,17 @@
       const btn = box.querySelector('.add-person');
       const frag = document.createDocumentFragment();
       Object.entries(membersCache || {}).filter(([id]) => id !== state.memberId && crState.selected.has(id)).forEach(([id, m]) => {
+        // Avatar nach Prioritaet (Upload -> Auswahl -> uid-Default); img-src via DOM-Property
+        // (kein innerHTML), onerror -> Initialen-Fallback (Ticket 0027).
+        const mm = (m && typeof m === 'object') ? Object.assign({}, m, { _uid: id }) : { _uid: id };
         const d = document.createElement('div');
-        d.className = 'avatar';
-        const ph = safePhotoData(m && m.photoData);   // eigenes Bild (0026) oder Initialen
-        if (ph){
-          d.classList.add('has-photo');
-          const img = document.createElement('img');  // img-src via DOM-Property (kein innerHTML)
-          img.src = ph; img.alt = '';
-          d.appendChild(img);
-        } else {
-          d.style.background = '#' + safeColor(m && m.color);
-          d.textContent = initials(m && m.name);       // textContent -> kein HTML-Injection
-        }
+        d.className = 'avatar has-photo';
+        d.style.background = '#' + safeColor(m && m.color);
+        const img = document.createElement('img');
+        img.alt = '';
+        img.addEventListener('error', () => { d.classList.remove('has-photo'); d.style.background = '#' + safeColor(m && m.color); d.textContent = initials(m && m.name); });
+        img.src = avatarSrc(mm);
+        d.appendChild(img);
         frag.appendChild(d);
       });
       box.insertBefore(frag, btn);
@@ -2554,7 +2692,16 @@
   if (DEBUG) Object.assign(window.__cp, {                       // Test-Belege (nur localhost)
     renderCalendar, renderUpcoming, toggleAvailability, calShiftMonth, openEventById,
     calState, getAvail: () => availabilityCache,
-    renderParticipantPicker, renderCrew, renderMe, avatarMarkup, safePhotoData   // Ticket 0026
+    renderParticipantPicker, renderCrew, renderMe, avatarMarkup, safePhotoData,  // Ticket 0026
+    saveAvatar, avatarSrc, dicebearUrl, safeAvatar, renderAvatarGallery          // Ticket 0027
+  });
+
+  // Avatar-Galerie (Ticket 0027) einmalig aufbauen + Klick-Auswahl per Delegation.
+  renderAvatarGallery();
+  const avGallery = $('avatar-gallery');
+  if (avGallery) avGallery.addEventListener('click', e => {
+    const btn = e.target.closest('.av-opt'); if (!btn) return;
+    saveAvatar(btn.dataset.style, btn.dataset.seed);
   });
 
   // Teilnehmer-Picker (Ticket 0016): echte Members, Mehrfach-Auswahl.
