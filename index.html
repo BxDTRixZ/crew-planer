@@ -328,6 +328,32 @@
   .check-item.done .checkbox svg { opacity:1; }
   .ci-label { font-size:16px; letter-spacing:-0.3px; transition:color 0.15s; }
   .check-item.done .ci-label { color:var(--label-2); text-decoration:line-through; }
+  /* packliste (Ticket 0029) -- echte, live-synchronisierte Liste */
+  .pack-add { display:flex; gap:8px; align-items:center; margin:12px 18px 4px; }
+  .pack-in, .pack-qty { background:var(--card-2); border:0.5px solid var(--card-border); border-radius:12px; color:var(--label); font-size:16px; padding:11px 13px; outline:none; -webkit-appearance:none; }
+  .pack-in { flex:1; min-width:0; }
+  .pack-qty { width:96px; flex-shrink:0; }
+  .pack-in::placeholder, .pack-qty::placeholder { color:var(--label-2); }
+  .pack-add-btn { flex-shrink:0; width:42px; height:42px; border:none; border-radius:50%; background:var(--green); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .pack-add-btn svg { width:22px; height:22px; }
+  .pack-add-btn:active { transform:scale(0.94); }
+  .pack-item { cursor:default; align-items:center; }
+  .pack-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .pack-name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .pack-qty-badge { font-size:12px; font-weight:600; color:var(--label-2); background:var(--card-2); border-radius:7px; padding:1px 7px; }
+  .pack-assign-btn { display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--label-2); font-size:13px; letter-spacing:-0.1px; align-self:flex-start; max-width:100%; }
+  .pack-assign-btn .av-sm { margin-left:0; width:20px; height:20px; border-width:0; font-size:9px; }
+  .pack-who { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pack-del { flex-shrink:0; width:30px; height:30px; border:none; background:none; color:var(--label-2); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; }
+  .pack-del svg { width:17px; height:17px; }
+  .pack-del:active { background:var(--card-2); }
+  .pack-empty { color:var(--label-2); font-size:14px; text-align:center; padding:26px 22px; line-height:1.5; }
+  .pack-assign-list { display:flex; flex-direction:column; gap:2px; margin-top:14px; max-height:46vh; overflow:auto; text-align:left; }
+  .pack-assign-opt { display:flex; align-items:center; gap:11px; padding:11px 8px; background:none; border:none; cursor:pointer; color:var(--label); font-size:16px; border-radius:10px; text-align:left; }
+  .pack-assign-opt:active { background:var(--card-2); }
+  .pack-assign-opt .av-sm { margin-left:0; width:30px; height:30px; border-width:0; font-size:11px; }
+  .pack-assign-ico { width:30px; height:30px; border-radius:50%; background:var(--card-2); color:var(--label-2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .pack-assign-ico svg { width:16px; height:16px; }
   /* voting */
   .opt.voted { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-tint); }
   .opt-vote-badge { display:flex; align-items:center; gap:4px; background:var(--accent-tint); color:var(--accent-text); font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
@@ -810,32 +836,31 @@
       <button class="nav-btn" data-close="packliste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
       <div class="nav-mid">Packliste</div><div class="nav-spacer"></div>
     </div>
+    <!-- ECHTE Packliste (Ticket 0029): Fortschritt + Eingabe + live-Liste; Inhalt
+         kommt aus rooms/{room}/events/{id}/packliste (renderPackliste). -->
     <div class="progress-head">
-      <div class="ph-count"><b>4</b> von 12 erledigt</div>
-      <div class="ph-bar"><div class="ph-fill" style="width:33%"></div></div>
+      <div class="ph-count" id="pack-count"><b>0</b> von 0 erledigt</div>
+      <div class="ph-bar"><div class="ph-fill" id="pack-fill" style="width:0%"></div></div>
     </div>
-    <div class="section-label">Dokumente</div>
-    <div class="fgroup">
-      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Reisepass</div></div>
-      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Flugticket</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Versicherungskarte</div></div>
+    <div class="pack-add">
+      <input type="text" id="pack-name" class="pack-in" placeholder="Was muss mit? (z. B. Zelt)" maxlength="80" autocomplete="off">
+      <input type="text" id="pack-qty" class="pack-qty" placeholder="Menge" maxlength="24" autocomplete="off">
+      <button type="button" id="pack-add-btn" class="pack-add-btn" aria-label="Hinzufügen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
-    <div class="section-label">Kleidung</div>
-    <div class="fgroup">
-      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Badehose</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">T-Shirts</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Sonnenbrille</div></div>
-      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Sneaker</div></div>
-    </div>
-    <div class="section-label">Technik & Sonstiges</div>
-    <div class="fgroup">
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Ladegerät</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Powerbank</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Sonnencreme</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Kopfhörer</div></div>
-      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Reiseapotheke</div></div>
-    </div>
+    <div class="fgroup" id="pack-list"></div>
+    <div class="pack-empty" id="pack-empty">Noch nichts auf der Liste. Füge oben das erste Teil hinzu.</div>
     <div class="bottom-pad"></div>
+  </div>
+
+  <!-- PACKLISTE: Zuweisungs-Picker (Ticket 0029) -- Mitglied ODER "fuer alle" -->
+  <div class="confirm-overlay" id="pack-assign" aria-hidden="true">
+    <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="pack-assign-title">
+      <div class="confirm-title" id="pack-assign-title">Wer bringt's mit?</div>
+      <div class="pack-assign-list" id="pack-assign-list"></div>
+      <div class="confirm-actions">
+        <button class="confirm-cancel" id="pack-assign-cancel" type="button">Abbrechen</button>
+      </div>
+    </div>
   </div>
 
   <!-- VOTING -->
@@ -1128,6 +1153,13 @@
                                // participants:{ uid: true } -- gewaehlte Teilnehmer + Ersteller
                                // createdBy:   uid des Erstellers (Google-Identitaet, Ticket 0024)
                                // createdAt:   serverTimestamp
+         events/{eventId}/packliste/{itemId}:
+                               { name, qty?, assignee?, done, createdBy, createdAt }
+                               // Gemeinsame, live-synchronisierte Packliste pro Event
+                               // (Ticket 0029). qty optional (String/Zahl). assignee =
+                               // uid des Zugewiesenen ODER null/absent = "fuer alle".
+                               // done = abgehakt. Liegt UNTER events/{id} -> von den
+                               // P6-Rules (events member-write/read) abgedeckt.
          availability/{memberId}/{YYYY-MM-DD}: true
                                // Abwesenheit raumweit (Ticket 0008). Tag-Klick im
                                // Kalender toggelt true/entfernt; memberId-basiert,
@@ -1505,6 +1537,7 @@
       syncMyAvatar();                            // eigenen Avatar aus dem Mitglied uebernehmen (Ticket 0027)
       renderEvents(lastEvents);
       renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
+      if (packEventId) renderPackliste();        // Zuweisungs-Avatar/-Name live nachziehen (Ticket 0029)
     });
     onValue(ref(db, `rooms/${room}/events`), snap => {
       lastEvents = snap.val() || {};
@@ -1871,18 +1904,193 @@
     grp.querySelectorAll('.tg').forEach(b => b.classList.remove('on')); btn.classList.add('on');
   })));
 
-  // Packliste: abhaken + Fortschritt
-  const pBox = $('packliste');
-  if (pBox) {
-    const items = pBox.querySelectorAll('.check-item');
-    const phCount = pBox.querySelector('.ph-count'), phFill = pBox.querySelector('.ph-fill');
-    const refresh = () => {
-      const done = pBox.querySelectorAll('.check-item.done').length;
-      phCount.innerHTML = `<b>${done}</b> von ${items.length} erledigt`;
-      phFill.style.width = (done / items.length * 100) + '%';
-    };
-    items.forEach(it => it.addEventListener('click', () => { it.classList.toggle('done'); refresh(); }));
-    refresh();
+  // ---- Packliste-Modul (Ticket 0029): echte, live-synchronisierte Liste pro Event ----
+  // Speicher: rooms/{room}/events/{eventId}/packliste/{itemId}
+  //   { name, qty?(String), assignee?(uid ODER null/absent = "fuer alle"), done(bool),
+  //     createdBy(uid), createdAt(serverTimestamp) }. Liegt UNTER events/{id} -> P6-Rules
+  //   (events member-write/read) decken es ab; KEINE Rules-Aenderung. XSS: Name/Menge via
+  //   textContent (kein innerHTML aus Daten). Das Abo wird beim Oeffnen frisch gesetzt und
+  //   beim Schliessen geloest -> kein Doppel-Abo bei Detail-Reopen.
+  const packScreen = $('packliste');
+  const packListEl = $('pack-list');
+  const packAssignOverlay = $('pack-assign');
+  let packUnsub = null;          // aktiver onValue-Detacher (Firebase gibt ihn zurueck)
+  let packItems = {};            // letzter RTDB-Stand { itemId: {...} }
+  let packEventId = null;        // Event, dessen Packliste gerade offen ist
+  let packAssignTarget = null;   // itemId, fuer das der Zuweisungs-Picker offen ist
+
+  function packBaseRef(){
+    return (state.room && packEventId)
+      ? ref(db, `rooms/${state.room}/events/${packEventId}/packliste`) : null;
+  }
+  function packItemRef(id){
+    return (state.room && packEventId && id)
+      ? ref(db, `rooms/${state.room}/events/${packEventId}/packliste/${id}`) : null;
+  }
+  function openPackliste(){
+    packEventId = currentDetailId;                     // an das offene Event koppeln (0007/0019)
+    if (packUnsub){ packUnsub(); packUnsub = null; }   // evtl. altes Abo zuerst loesen
+    const r = packBaseRef();
+    if (!r){ packItems = {}; renderPackliste(); return; }
+    packUnsub = onValue(r, snap => { packItems = snap.val() || {}; renderPackliste(); });
+  }
+  function closePackliste(){
+    if (packUnsub){ packUnsub(); packUnsub = null; }
+    packEventId = null;
+    closePackAssign();
+  }
+  // stabile Reihenfolge: nach createdAt, dann push-Key
+  function packSortedIds(){
+    return Object.keys(packItems).sort((a,b) => {
+      const ca = (packItems[a] && +packItems[a].createdAt) || 0;
+      const cb = (packItems[b] && +packItems[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
+    });
+  }
+  function renderPackliste(){
+    if (!packListEl) return;
+    const ids = packSortedIds();
+    const total = ids.length;
+    const done = ids.filter(id => packItems[id] && packItems[id].done).length;
+    const cEl = $('pack-count'); if (cEl) cEl.innerHTML = `<b>${done}</b> von ${total} erledigt`;
+    const fEl = $('pack-fill'); if (fEl) fEl.style.width = (total ? (done/total*100) : 0) + '%';
+    const eEl = $('pack-empty'); if (eEl) eEl.style.display = total ? 'none' : '';
+    packListEl.style.display = total ? '' : 'none';
+    packListEl.innerHTML = '';                          // kein innerHTML aus Daten -> DOM-Bau pro Item
+    ids.forEach(id => packListEl.appendChild(buildPackRow(id, packItems[id] || {})));
+  }
+  function buildPackRow(id, it){
+    const row = document.createElement('div');
+    row.className = 'check-item pack-item' + (it.done ? ' done' : '');
+    row.dataset.id = id;
+
+    const cb = document.createElement('div');
+    cb.className = 'checkbox';
+    cb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>';
+    cb.addEventListener('click', () => togglePackDone(id));
+    row.appendChild(cb);
+
+    const body = document.createElement('div');
+    body.className = 'pack-body';
+    const nameRow = document.createElement('div');
+    nameRow.className = 'pack-name-row';
+    const nm = document.createElement('div');
+    nm.className = 'ci-label';
+    nm.textContent = it.name || '(ohne Namen)';        // textContent -> XSS-sicher
+    nameRow.appendChild(nm);
+    const qty = (it.qty == null) ? '' : String(it.qty).trim();
+    if (qty){
+      const q = document.createElement('span');
+      q.className = 'pack-qty-badge';
+      q.textContent = qty;                             // Menge nur Anzeige, textContent
+      nameRow.appendChild(q);
+    }
+    body.appendChild(nameRow);
+
+    // Zuweisung: Avatar+Name des Zugewiesenen ODER "fuer alle" (defensiv bei Ex-Mitglied)
+    const assign = document.createElement('button');
+    assign.type = 'button';
+    assign.className = 'pack-assign-btn';
+    const who = document.createElement('span');
+    who.className = 'pack-who';
+    const m = (it.assignee && membersCache) ? membersCache[it.assignee] : null;
+    if (it.assignee && m){
+      assign.innerHTML = avatarMarkup(m, 'av-sm');     // bestehende Avatar-Logik (0027/0028)
+      who.textContent = m.name || 'Mitglied';
+    } else if (it.assignee){
+      who.textContent = 'Unbekannt';                   // zugewiesenes Mitglied nicht (mehr) im Raum
+    } else {
+      who.textContent = 'für alle';                    // offen / niemand fix
+    }
+    assign.appendChild(who);
+    assign.addEventListener('click', () => openPackAssign(id));
+    body.appendChild(assign);
+    row.appendChild(body);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'pack-del';
+    del.setAttribute('aria-label', 'Löschen');
+    del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/></svg>';
+    del.addEventListener('click', () => removePackItem(id));
+    row.appendChild(del);
+    return row;
+  }
+  async function addPackItem(){
+    const r = packBaseRef(); if (!r) return;
+    const nameEl = $('pack-name'), qtyEl = $('pack-qty');
+    const name = (nameEl ? nameEl.value : '').trim();
+    if (!name){ if (nameEl) nameEl.focus(); return; }   // ohne Namen kein Item
+    const qty = (qtyEl ? qtyEl.value : '').trim();
+    const item = { name, done:false, createdBy: state.uid || null, createdAt: serverTimestamp() };
+    if (qty) item.qty = qty;                            // Menge optional
+    if (nameEl) nameEl.value = '';
+    if (qtyEl) qtyEl.value = '';
+    try { await push(r, item); } catch(e){ /* Live-Listener reconciled */ }
+    if (nameEl) nameEl.focus();
+  }
+  async function togglePackDone(id){
+    const ir = packItemRef(id); if (!ir) return;
+    const cur = !!(packItems[id] && packItems[id].done);
+    try { await update(ir, { done: !cur }); } catch(e){}
+  }
+  async function removePackItem(id){
+    const ir = packItemRef(id); if (!ir) return;
+    try { await remove(ir); } catch(e){}
+  }
+  async function setPackAssignee(id, uid){
+    const ir = packItemRef(id); if (!ir) return;
+    try { await update(ir, { assignee: uid || null }); } catch(e){}   // null -> "fuer alle"
+  }
+  // ---- Zuweisungs-Picker: echte Raum-Mitglieder + "fuer alle" ----
+  function openPackAssign(id){
+    if (!packAssignOverlay) return;
+    packAssignTarget = id;
+    const listEl = $('pack-assign-list'); if (!listEl) return;
+    listEl.innerHTML = '';
+    // "fuer alle" (offen / niemand fix)
+    const all = document.createElement('button');
+    all.type = 'button'; all.className = 'pack-assign-opt';
+    all.innerHTML = '<span class="pack-assign-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 8a4 4 0 100-8 4 4 0 000 8zM23 20v-2a4 4 0 00-3-3.87M16 .13a4 4 0 010 7.75"/></svg></span>';
+    const allLabel = document.createElement('span'); allLabel.textContent = 'Für alle (offen)';
+    all.appendChild(allLabel);
+    all.addEventListener('click', () => { setPackAssignee(packAssignTarget, null); closePackAssign(); });
+    listEl.appendChild(all);
+    // echte Mitglieder (rooms/{room}/members)
+    Object.keys(membersCache || {}).forEach(uid => {
+      const m = membersCache[uid];
+      if (!m || typeof m !== 'object') return;
+      const opt = document.createElement('button');
+      opt.type = 'button'; opt.className = 'pack-assign-opt';
+      opt.innerHTML = avatarMarkup(m, 'av-sm');
+      const nm = document.createElement('span'); nm.textContent = m.name || 'Mitglied';
+      opt.appendChild(nm);
+      opt.addEventListener('click', () => { setPackAssignee(packAssignTarget, uid); closePackAssign(); });
+      listEl.appendChild(opt);
+    });
+    packAssignOverlay.classList.add('open');
+    packAssignOverlay.setAttribute('aria-hidden', 'false');
+  }
+  function closePackAssign(){
+    packAssignTarget = null;
+    if (!packAssignOverlay) return;
+    packAssignOverlay.classList.remove('open');
+    packAssignOverlay.setAttribute('aria-hidden', 'true');
+  }
+  // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Eingabe/Enter -> anlegen.
+  if (packScreen){
+    const packMod = document.querySelector('#detail .mod[data-open="packliste"]');
+    if (packMod) packMod.addEventListener('click', openPackliste);     // zusaetzlich zum generischen [data-open]
+    const packCloseBtn = packScreen.querySelector('[data-close="packliste"]');
+    if (packCloseBtn) packCloseBtn.addEventListener('click', closePackliste);
+    const addBtn = $('pack-add-btn'); if (addBtn) addBtn.addEventListener('click', addPackItem);
+    const nameEl = $('pack-name'); if (nameEl) nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') addPackItem(); });
+    const qtyEl = $('pack-qty'); if (qtyEl) qtyEl.addEventListener('keydown', e => { if (e.key === 'Enter') addPackItem(); });
+    if (packAssignOverlay){
+      const cancel = $('pack-assign-cancel'); if (cancel) cancel.addEventListener('click', closePackAssign);
+      packAssignOverlay.addEventListener('click', e => { if (e.target === packAssignOverlay) closePackAssign(); });
+    }
   }
 
   // Voting: Stimme setzen (Badge wandert mit)
