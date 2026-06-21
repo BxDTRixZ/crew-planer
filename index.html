@@ -354,6 +354,18 @@
   .pack-assign-opt .av-sm { margin-left:0; width:30px; height:30px; border-width:0; font-size:11px; }
   .pack-assign-ico { width:30px; height:30px; border-radius:50%; background:var(--card-2); color:var(--label-2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .pack-assign-ico svg { width:16px; height:16px; }
+  /* Gesamt-Besorgliste (Ticket 0030): raumweite Aggregat-Ansicht */
+  .besorg-filter { margin:12px 16px 4px; background:rgba(118,118,128,0.24); border-radius:var(--r-pill); padding:3px; display:flex; gap:2px; }
+  .bf-btn { flex:1; border:none; background:none; padding:8px 0; font-size:13px; font-weight:600; color:var(--label-2); cursor:pointer; border-radius:9px; letter-spacing:-0.2px; transition:color 0.2s ease, background 0.2s ease; }
+  .bf-btn.active { color:var(--label); background:#636366; box-shadow:0 2px 6px rgba(0,0,0,0.4); }
+  .besorg-empty { text-align:center; color:var(--label-2); font-size:15px; padding:48px 24px; line-height:1.5; }
+  .besorg-item { align-items:flex-start; }
+  .besorg-body { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+  .besorg-sub { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .besorg-ev { display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:600; color:var(--accent); background:var(--card-2); border-radius:7px; padding:2px 8px 2px 4px; max-width:100%; }
+  .besorg-ev span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .besorg-who { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--label-2); }
+  .besorg-who .av-sm { margin-left:0; width:20px; height:20px; border-width:0; font-size:9px; }
   /* voting */
   .opt.voted { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-tint); }
   .opt-vote-badge { display:flex; align-items:center; gap:4px; background:var(--accent-tint); color:var(--accent-text); font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
@@ -604,8 +616,27 @@
       </div>
     </div>
 
+    <!-- BESORGEN (Ticket 0030): raumweite Gesamt-Besorgliste. Buendelt OFFENE Packlisten-
+         Items ueber ALLE Events des Raums aus dem bestehenden Events-Cache (lastEvents,
+         0029-Listener) -- KEIN neuer Listener. Filter Meine/Fuer alle/Alle (Default Meine). -->
+    <div class="tab-view hidden" id="view-besorg">
+      <header class="header">
+        <div><div class="greeting">Raumweit</div><h1 class="title">Besorgen</h1></div>
+      </header>
+      <div class="besorg-filter" id="besorg-filter">
+        <button class="bf-btn active" type="button" data-bf="meine">Meine</button>
+        <button class="bf-btn" type="button" data-bf="fueralle">Für alle</button>
+        <button class="bf-btn" type="button" data-bf="alle">Alle</button>
+      </div>
+      <main class="list" id="besorg-list-wrap">
+        <div class="besorg-empty" id="besorg-empty" style="display:none"></div>
+        <div class="fgroup" id="besorg-list"></div>
+      </main>
+    </div>
+
     <nav class="tabbar">
       <button class="tab active" data-view="events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg><span>Events</span></button>
+      <button class="tab" data-view="besorg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 13a2 2 0 01-2 2H9a2 2 0 01-2-2L6 7z"/><path d="M9 7V5a3 3 0 016 0v2"/></svg><span>Besorgen</span></button>
       <button class="tab" data-view="kalender"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
       <button class="tab" data-view="crew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/></svg><span>Crew</span></button>
     </nav>
@@ -1538,12 +1569,14 @@
       renderEvents(lastEvents);
       renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
       if (packEventId) renderPackliste();        // Zuweisungs-Avatar/-Name live nachziehen (Ticket 0029)
+      renderBesorg();                            // Besorg-Zuweisungen live nachziehen (Ticket 0030)
     });
     onValue(ref(db, `rooms/${room}/events`), snap => {
       lastEvents = snap.val() || {};
       renderEvents(lastEvents);
       refreshOpenDetail();                       // offenes Detail live nachziehen (Ticket 0007)
       renderCalendar();                          // Event-Dots + "Kommende Termine" live (Ticket 0008)
+      renderBesorg();                            // Gesamt-Besorgliste live ueber Events-Cache (Ticket 0030)
     });
     // Abwesenheiten live: rooms/{room}/availability/{memberId}/{YYYY-MM-DD} = true (Ticket 0008)
     onValue(ref(db, `rooms/${room}/availability`), snap => {
@@ -1742,13 +1775,14 @@
   }
   segBtns.forEach((btn, idx) => btn.addEventListener('click', () => switchTab(btn.dataset.tab, idx)));
 
-  const views = { events:$('view-events'), kalender:$('view-kalender'), crew:$('view-crew') };
+  const views = { events:$('view-events'), kalender:$('view-kalender'), crew:$('view-crew'), besorg:$('view-besorg') };
   const tabs = document.querySelectorAll('.tabbar .tab');
   tabs.forEach(t => t.addEventListener('click', () => {
     tabs.forEach(x => x.classList.remove('active')); t.classList.add('active');
     const v = t.dataset.view;
-    Object.entries(views).forEach(([k, el]) => el.classList.toggle('hidden', k !== v));
+    Object.entries(views).forEach(([k, el]) => { if (el) el.classList.toggle('hidden', k !== v); });
     if (v === 'crew') renderCrew();              // Fallback: bei Tab-Wechsel aus membersCache rendern (Ticket 0004)
+    if (v === 'besorg') renderBesorg();          // Gesamt-Besorgliste aus Events-Cache rendern (Ticket 0030)
   }));
 
   // detail from card (via data-*)
@@ -2092,6 +2126,149 @@
       packAssignOverlay.addEventListener('click', e => { if (e.target === packAssignOverlay) closePackAssign(); });
     }
   }
+
+  // ---- Gesamt-Besorgliste (Ticket 0030): raumweite Aggregat-Ansicht ----
+  // Buendelt OFFENE (done==false) Packlisten-Items ueber ALLE Events des Raums aus dem
+  // BESTEHENDEN Events-Cache (lastEvents, 0029-Listener) -- KEIN neuer Listener, KEIN neues
+  // Datenmodell, KEINE Rules-Aenderung. Filter: Meine (assignee==state.uid) / Fuer alle
+  // (assignee fehlt/null) / Alle. Abhaken schreibt done:true auf den exakten Item-Pfad
+  // zurueck -> konsistent mit dem Event-Packliste-Modul (0029, gleicher Cache).
+  // XSS: Item-Name/Menge/Event-Name ausschliesslich via textContent.
+  const besorgListEl = $('besorg-list');
+  const besorgEmptyEl = $('besorg-empty');
+  let besorgFilter = 'meine';                    // Default laut Ticket: persoenliche Besorgliste
+
+  // Offene Items ueber alle Events sammeln: [{eventId, eventName, evCreatedAt, itemId, it}]
+  function collectOpenItems(){
+    const out = [];
+    const evs = lastEvents || {};
+    Object.keys(evs).forEach(eventId => {
+      const ev = evs[eventId];
+      if (!ev || typeof ev !== 'object') return;
+      const pl = ev.packliste;
+      if (!pl || typeof pl !== 'object') return;   // Event ohne Packliste liefert nichts
+      Object.keys(pl).forEach(itemId => {
+        const it = pl[itemId];
+        if (!it || typeof it !== 'object') return;
+        if (it.done) return;                       // nur OFFENE Items; abgehaktes faellt raus
+        out.push({ eventId, eventName: ev.name || 'Event',
+                   evCreatedAt: (+ev.createdAt || 0), itemId, it });
+      });
+    });
+    // Buendeln: nach Event (createdAt, dann id), dann Item (createdAt, dann id) -> stabil
+    out.sort((a, b) => {
+      if (a.evCreatedAt !== b.evCreatedAt) return a.evCreatedAt - b.evCreatedAt;
+      if (a.eventId !== b.eventId) return a.eventId < b.eventId ? -1 : 1;
+      const ca = (+a.it.createdAt || 0), cb = (+b.it.createdAt || 0);
+      if (ca !== cb) return ca - cb;
+      return a.itemId < b.itemId ? -1 : 1;
+    });
+    return out;
+  }
+  function besorgMatches(entry){
+    const as = entry.it.assignee;
+    if (besorgFilter === 'meine')    return !!state.uid && as === state.uid;   // mir zugewiesen
+    if (besorgFilter === 'fueralle') return as == null;                        // ohne Zuweisung
+    return true;                                                               // 'alle'
+  }
+  const BESORG_EMPTY = {
+    meine:    'Nichts offen – dir ist gerade nichts zugewiesen.',
+    fueralle: 'Nichts offen – alles ist schon übernommen.',
+    alle:     'Nichts offen – die Crew hat alles besorgt.'
+  };
+  function renderBesorg(){
+    if (!besorgListEl) return;
+    const items = collectOpenItems().filter(besorgMatches);
+    if (besorgEmptyEl){
+      besorgEmptyEl.textContent = BESORG_EMPTY[besorgFilter] || 'Nichts offen.';
+      besorgEmptyEl.style.display = items.length ? 'none' : '';
+    }
+    besorgListEl.style.display = items.length ? '' : 'none';
+    besorgListEl.innerHTML = '';                  // kein innerHTML aus Daten -> DOM-Bau pro Item
+    items.forEach(e => besorgListEl.appendChild(buildBesorgRow(e)));
+  }
+  function buildBesorgRow(entry){
+    const { eventName, eventId, itemId, it } = entry;
+    const row = document.createElement('div');
+    row.className = 'check-item besorg-item';
+    row.dataset.id = itemId;
+    row.dataset.event = eventId;
+
+    const cb = document.createElement('div');
+    cb.className = 'checkbox';
+    cb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>';
+    cb.addEventListener('click', () => besorgCheckOff(eventId, itemId));
+    row.appendChild(cb);
+
+    const body = document.createElement('div');
+    body.className = 'besorg-body';
+    // Zeile 1: Name (+ optionale Menge)
+    const nameRow = document.createElement('div');
+    nameRow.className = 'pack-name-row';
+    const nm = document.createElement('div');
+    nm.className = 'ci-label';
+    nm.textContent = it.name || '(ohne Namen)';   // textContent -> XSS-sicher
+    nameRow.appendChild(nm);
+    const qty = (it.qty == null) ? '' : String(it.qty).trim();
+    if (qty){
+      const q = document.createElement('span');
+      q.className = 'pack-qty-badge';
+      q.textContent = qty;                         // Menge nur Anzeige, textContent
+      nameRow.appendChild(q);
+    }
+    body.appendChild(nameRow);
+    // Zeile 2: Event-Bezug (+ in "Alle" wer es bringt)
+    const sub = document.createElement('div');
+    sub.className = 'besorg-sub';
+    const ev = document.createElement('span');
+    ev.className = 'besorg-ev';
+    ev.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18l6-6-6-6"/></svg>';
+    const evName = document.createElement('span');
+    evName.textContent = eventName;                // textContent -> XSS-sicher
+    ev.appendChild(evName);
+    sub.appendChild(ev);
+    if (besorgFilter === 'alle'){                  // in "Alle": wer bringt's mit
+      const who = document.createElement('span');
+      who.className = 'besorg-who';
+      const m = (it.assignee && membersCache) ? membersCache[it.assignee] : null;
+      if (it.assignee && m){
+        who.innerHTML = avatarMarkup(m, 'av-sm');   // bestehende Avatar-Logik (0027/0028)
+        const wn = document.createElement('span'); wn.textContent = m.name || 'Mitglied';
+        who.appendChild(wn);
+      } else if (it.assignee){
+        const wn = document.createElement('span'); wn.textContent = 'Unbekannt';   // Ex-Mitglied
+        who.appendChild(wn);
+      } else {
+        const wn = document.createElement('span'); wn.textContent = 'für alle';
+        who.appendChild(wn);
+      }
+      sub.appendChild(who);
+    }
+    body.appendChild(sub);
+    row.appendChild(body);
+    return row;
+  }
+  async function besorgCheckOff(eventId, itemId){
+    if (!state.room || !eventId || !itemId) return;
+    // Nur offene Items werden gezeigt -> Abhaken setzt done:true am exakten Item-Pfad
+    // (P6 events member-write deckt es ab; KEIN neuer Schreibpfad). Live-Listener entfernt
+    // das Item danach aus der offenen Liste; im Event-Modul (0029) ist es konsistent erledigt.
+    try { await update(ref(db, `rooms/${state.room}/events/${eventId}/packliste/${itemId}`), { done: true }); }
+    catch(e){ /* Live-Listener reconciled */ }
+  }
+  // Filter-Umschalter (Meine/Fuer alle/Alle)
+  const besorgFilterEl = $('besorg-filter');
+  if (besorgFilterEl){
+    besorgFilterEl.querySelectorAll('.bf-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        besorgFilter = btn.dataset.bf || 'meine';
+        besorgFilterEl.querySelectorAll('.bf-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderBesorg();
+      });
+    });
+  }
+  if (DEBUG) Object.assign(window.__cp, { renderBesorg, collectOpenItems,   // Test-Belege (0030)
+    setBesorgFilter: f => { besorgFilter = f; renderBesorg(); } });
 
   // Voting: Stimme setzen (Badge wandert mit)
   document.querySelectorAll('.vote-opt').forEach(o => o.addEventListener('click', () => {
