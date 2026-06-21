@@ -1073,20 +1073,23 @@
       const metaRef = ref(db, `rooms/${room}/meta`);
       const metaSnap = await get(metaRef);
       if (!metaSnap.exists()) await set(metaRef, { createdAt: serverTimestamp() });
-      // Member schreiben (BR-10). memberId pro Raum in sessionStorage halten, damit ein
-      // Reload im selben Tab den Eintrag aktualisiert statt zu duplizieren.
-      // sessionStorage = Tab-Session, KEIN Login/Account (Vorgabe: login-los).
+      // Member schreiben (BR-10). memberId pro Raum in localStorage halten -> EINE
+      // Identitaet pro Browser. Frueher sessionStorage (Tab-Session): ein neuer Tab /
+      // Browser-Neustart fand die memberId nicht und der Auto-Rejoin (0003) legte einen
+      // ZWEITEN Member an -> Self-Duplikat (Ticket 0018, Bug C1). localStorage ueberlebt
+      // Tab/Neustart; weiterhin login-los (anonyme Browser-ID, kein Account).
+      // Migration: alte sessionStorage-IDs noch lesen, ab jetzt nach localStorage schreiben.
       const skey = `cp:member:${room}`;
       let memberId = null;
-      try { memberId = sessionStorage.getItem(skey); } catch(e){}
+      try { memberId = localStorage.getItem(skey) || sessionStorage.getItem(skey); } catch(e){}
       if (memberId){
         const ex = await get(ref(db, `rooms/${room}/members/${memberId}`));
         if (!ex.exists()) memberId = null;     // Eintrag weg -> neu anlegen
       }
       if (!memberId){
         memberId = push(ref(db, `rooms/${room}/members`)).key;
-        try { sessionStorage.setItem(skey, memberId); } catch(e){}
       }
+      try { localStorage.setItem(skey, memberId); } catch(e){}
       state.memberId = memberId;
       await set(ref(db, `rooms/${room}/members/${memberId}`), { name, color: state.color });
       // Home zeigen + Live-Listener
@@ -1331,6 +1334,21 @@
     renderDetailStatus(effectiveStatus(ev), ev.deadline);
   }
 
+  // Detail-Module an die beim Anlegen gewaehlten Toggles koppeln (Ticket 0018, Bug A).
+  // modules = { Modul-Name: bool } (seit 0002). Die statischen .mod-Zeilen im Detail
+  // werden ein-/ausgeblendet: nur fuer dieses Event aktivierte Module bleiben sichtbar,
+  // abgewaehlte oder typ-fremde (kein Key) werden ausgeblendet. Fallback: kein/leeres
+  // modules (Legacy-Events vor der Modul-Auswahl) -> alle Module sichtbar (wie bisher).
+  function applyDetailModules(modules){
+    const has = modules && typeof modules === 'object' && Object.keys(modules).length > 0;
+    document.querySelectorAll('#detail .modules .mod').forEach(mod => {
+      const t = mod.querySelector('.mod-title');
+      const title = ((t && t.textContent) || '').trim();
+      const show = !has ? true : modules[title] === true;
+      mod.style.display = show ? '' : 'none';
+    });
+  }
+
   // Detail oeffnen (dynamische Cards -> via Delegation, s. Bootstrap)
   function openDetail(d){
     $('d-title').textContent = d.title;
@@ -1340,6 +1358,8 @@
     $('d-clabel').textContent = d.clabel;
     $('d-going').textContent = d.going;
     currentDetailId = d.id || null;   // fuer die Status-Steuerung (Ticket 0007)
+    // Modul-Anzeige folgt der Auswahl des Events (Ticket 0018, Bug A)
+    applyDetailModules(d.id && lastEvents[d.id] ? lastEvents[d.id].modules : null);
 
     // full crew, no "+N"
     $('d-avatars').innerHTML = (d.crew || '').split(',').filter(Boolean).map(p => {
@@ -1517,10 +1537,12 @@
   }
   function renderParticipantPicker(){
     const box = $('pp-list'); if (!box) return;
-    const entries = Object.entries(membersCache || {});
+    // Sich selbst NICHT als waehlbare Option zeigen -- der Host ist beim Anlegen
+    // ohnehin automatisch Teilnehmer (Ticket 0018, Bug C2).
+    const entries = Object.entries(membersCache || {}).filter(([id]) => id !== state.memberId);
     box.innerHTML = entries.length
       ? entries.map(([id, m]) => partRowHTML(id, m)).join('')
-      : `<div class="people-empty" style="padding:14px 16px">Noch niemand im Raum</div>`;
+      : `<div class="people-empty" style="padding:14px 16px">Noch niemand sonst im Raum</div>`;
   }
   // Auswahl-Vorschau im Sheet: Avatare (vor dem statischen +-Button) + Zusammenfassung.
   // Der +-Button bleibt ein STATISCHER DOM-Knoten (behaelt sein data-open-Binding).
@@ -1530,7 +1552,7 @@
       box.querySelectorAll('.avatar').forEach(a => a.remove());
       const btn = box.querySelector('.add-person');
       const frag = document.createDocumentFragment();
-      Object.entries(membersCache || {}).filter(([id]) => crState.selected.has(id)).forEach(([id, m]) => {
+      Object.entries(membersCache || {}).filter(([id]) => id !== state.memberId && crState.selected.has(id)).forEach(([id, m]) => {
         const d = document.createElement('div');
         d.className = 'avatar';
         d.style.background = '#' + safeColor(m && m.color);
@@ -1541,8 +1563,10 @@
     }
     const sum = $('cr-partsum');
     if (sum){
-      const total = Object.keys(membersCache || {}).length;
-      const n = Object.keys(membersCache || {}).filter(id => crState.selected.has(id)).length;
+      // Zusammenfassung zaehlt nur die einladbaren ANDEREN (self ist Host, Ticket 0018)
+      const others = Object.keys(membersCache || {}).filter(id => id !== state.memberId);
+      const total = others.length;
+      const n = others.filter(id => crState.selected.has(id)).length;
       const label = n === 0 ? 'Niemand' : (n === total ? 'Alle' : `${n} ausgewählt`);
       sum.innerHTML = esc(label) + ' ' + CHEVRON;
     }
@@ -1657,8 +1681,9 @@
     $('cr-asdate').innerHTML = 'Datum wählen ' + CHEVRON;
     asTo.dataset.to = 'live'; asTo.innerHTML = 'Läuft ' + CHEVRON;
     asw.classList.remove('on'); asDateRow.style.display = 'none'; asToRow.style.display = 'none';
-    // Teilnehmer-Default: alle aktuellen Raum-Members vorausgewaehlt (Ticket 0016)
-    crState.selected = new Set(Object.keys(membersCache || {}));
+    // Teilnehmer-Default: alle ANDEREN Raum-Members vorausgewaehlt (Ticket 0016);
+    // self ist Host und wird beim Anlegen automatisch ergaenzt -- nicht im Picker (Ticket 0018).
+    crState.selected = new Set(Object.keys(membersCache || {}).filter(id => id !== state.memberId));
     renderInvited();
   }
   const openSheet = () => { resetSheet(); sheet.classList.add('open'); backdrop.classList.add('open'); };
@@ -1901,7 +1926,7 @@
 
   /* ---- Init: Reload-Persistenz (Ticket 0003) ----
      ?room=CODE in URL + gespeicherter Name -> Auto-Rejoin ohne Onboarding.
-     join() reuse't die memberId aus sessionStorage -> kein Member-Duplikat.
+     join() reuse't die memberId aus localStorage -> kein Member-Duplikat (Ticket 0018).
      Kein Name / Storage-Block / Fehler -> Onboarding (Name ggf. vorbefuellt). */
   function init(){
     const r = urlRoom();
