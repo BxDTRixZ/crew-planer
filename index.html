@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="Crew-Planer - gemeinsam Urlaube und Treffen planen">
+<meta name="theme-color" content="#000000">
+<title>Crew</title>
+<style>
+  :root {
+    --bg:#000; --card:#1C1C1E; --card-2:#2C2C2E; --label:#FFF; --label-2:#98989D;
+    --accent:#5E5CE6; --accent-tint:rgba(94,92,230,0.22); --accent-text:#A29FFF;
+    --green:#30D158; --green-tint:rgba(48,209,88,0.18); --red:#FF453A; --amber:#FF9F0A;
+    --blue:#0A84FF; --separator:rgba(255,255,255,0.08); --card-border:rgba(255,255,255,0.07);
+    --r-card:22px; --r-pill:14px; --ease:cubic-bezier(0.16,1,0.3,1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:#000; color:var(--label); -webkit-font-smoothing:antialiased; display:flex; justify-content:center; }
+  /* min-height: 100dvh folgt der dynamischen sichtbaren Hoehe (Mobile-URL-Bar),
+     100vh bleibt Fallback fuer Browser ohne dvh-Support (Ticket 0005). */
+  .app { width:100%; max-width:430px; min-height:100vh; min-height:100dvh; background:var(--bg); display:flex; flex-direction:column; position:relative; overflow:hidden; }
+
+  /* HOME */
+  .header { padding:14px 20px 8px; display:flex; align-items:flex-start; justify-content:space-between; }
+  .greeting { font-size:15px; color:var(--label-2); font-weight:500; letter-spacing:-0.2px; }
+  .title { font-size:34px; font-weight:700; letter-spacing:-0.8px; margin-top:2px; }
+  .add-btn { width:44px; height:44px; border-radius:50%; background:var(--accent); border:none; color:#fff; font-size:26px; font-weight:300; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(94,92,230,0.45); transition:transform 0.15s var(--ease); flex-shrink:0; margin-top:6px; }
+  .add-btn:active { transform:scale(0.9); }
+  .segmented { margin:12px 20px 4px; background:rgba(118,118,128,0.24); border-radius:var(--r-pill); padding:3px; display:flex; position:relative; }
+  .seg-indicator { position:absolute; top:3px; left:3px; width:calc(50% - 3px); height:calc(100% - 6px); background:#636366; border-radius:11px; box-shadow:0 2px 6px rgba(0,0,0,0.4); transition:transform 0.32s var(--ease); }
+  .seg-btn { flex:1; border:none; background:none; padding:9px 0; font-size:14px; font-weight:600; color:var(--label); cursor:pointer; position:relative; z-index:1; letter-spacing:-0.2px; transition:color 0.2s ease; }
+  .seg-btn.inactive { color:var(--label-2); }
+  .list { flex:1; overflow-y:auto; padding:12px 16px 100px; -webkit-overflow-scrolling:touch; }
+  .list.hidden { display:none; }
+
+  .card { background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); padding:18px; margin-bottom:14px; cursor:pointer; transition:transform 0.16s var(--ease); opacity:0; transform:translateY(14px); }
+  .card.in { opacity:1; transform:translateY(0); }
+  .card:active { transform:scale(0.975); }
+
+  .badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; letter-spacing:-0.1px; }
+  .bdot { width:6px; height:6px; border-radius:50%; }
+  .badge.plan { background:rgba(10,132,255,0.16); color:#4DA3FF; }
+  .badge.plan .bdot { background:var(--blue); }
+  .badge.live { background:var(--green-tint); color:var(--green); }
+  .badge.live .bdot { background:var(--green); }
+  .badge.past { background:rgba(142,142,147,0.18); color:var(--label-2); }
+  .badge.past .bdot { background:var(--label-2); }
+  .card-status { margin-bottom:12px; }
+
+  .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .card-title { font-size:20px; font-weight:600; letter-spacing:-0.4px; min-width:0; overflow-wrap:anywhere; }
+  .countdown { flex-shrink:0; background:var(--accent-tint); color:var(--accent-text); font-size:13px; font-weight:600; padding:5px 11px; border-radius:999px; white-space:nowrap; letter-spacing:-0.1px; }
+  .countdown.muted { background:rgba(142,142,147,0.18); color:var(--label-2); }
+  .meta { display:flex; align-items:center; gap:6px; margin-top:7px; color:var(--label-2); font-size:15px; letter-spacing:-0.2px; min-width:0; }
+  .meta svg { width:15px; height:15px; flex-shrink:0; opacity:0.85; }
+  /* Ort-Maps-Link: erbt Label-Farbe, kein Default-Blau; Unterstreichung erst bei Hover */
+  .maps-link { color:inherit; text-decoration:none; }
+  .maps-link:hover { text-decoration:underline; }
+  /* langer Ort wird auf der Card gekuerzt (ellipsis), Datum bleibt fest -> Card bricht nicht (T3) */
+  .meta .maps-link { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .meta .meta-date { flex-shrink:0; white-space:nowrap; }
+  .dot { width:3px; height:3px; border-radius:50%; background:var(--label-2); opacity:0.6; flex-shrink:0; }
+  .card-bottom { display:flex; align-items:center; justify-content:space-between; margin-top:16px; flex-wrap:wrap; gap:8px; }
+  .avatars { display:flex; }
+  .avatar { width:30px; height:30px; border-radius:50%; border:2px solid var(--card); margin-left:-9px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; }
+  .avatar:first-child { margin-left:0; }
+  .avatar.more { background:#3A3A3C; color:var(--label-2); font-size:11px; }
+  .going { font-size:14px; color:var(--label-2); font-weight:500; letter-spacing:-0.2px; }
+  .going b { color:var(--green); font-weight:600; }
+  .card-deadline { display:flex; align-items:center; gap:6px; margin-top:14px; padding-top:13px; border-top:0.5px solid var(--separator); color:var(--label-2); font-size:13px; letter-spacing:-0.1px; }
+  .card-deadline svg { width:14px; height:14px; opacity:0.85; flex-shrink:0; }
+  .card-deadline b { color:var(--amber); font-weight:600; }
+
+  .tabbar { position:absolute; bottom:0; left:0; right:0; height:84px; background:rgba(20,20,22,0.80); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-top:0.5px solid var(--separator); display:flex; padding:8px 0 24px; }
+  .tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; border:none; background:none; cursor:pointer; color:var(--label-2); transition:color 0.2s ease; }
+  .tab.active { color:var(--accent); }
+  .tab svg { width:26px; height:26px; }
+  .tab span { font-size:10px; font-weight:500; letter-spacing:-0.1px; }
+
+  /* SCREENS */
+  .screen { position:absolute; inset:0; background:var(--bg); transform:translateX(100%); transition:transform 0.4s var(--ease); overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; }
+  .screen.open { transform:translateX(0); }
+  /* Ticket 0005: Screen ist flex-column + overflow-y:auto. Ohne dies stauchen
+     flex-shrinkbare Kinder (v.a. .modules mit overflow:hidden -> auto-min-size 0)
+     den Inhalt, statt den Screen scrollen zu lassen -> untere Module abgeschnitten. */
+  .screen > * { flex-shrink:0; }
+  #detail { z-index:100; }
+  #termin, #kosten, #reiseplan, #packliste, #voting, #flug, #buchungen, #treffpunkt { z-index:200; }
+  #datepick, #grouppick, #sdpick { z-index:400; }
+  #groupedit { z-index:410; }
+  .navbar { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; min-height:52px; background:rgba(0,0,0,0.55); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); }
+  .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
+  .nav-btn svg { width:20px; height:20px; }
+  .nav-mid { font-size:16px; font-weight:600; letter-spacing:-0.3px; }
+  .nav-icon { width:36px; height:36px; border-radius:50%; background:rgba(118,118,128,0.24); border:none; color:var(--label); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .nav-icon svg { width:18px; height:18px; }
+  .nav-spacer { width:44px; }
+
+  .hero { position:relative; padding:6px 22px 20px; }
+  .hero::before { content:""; position:absolute; top:0; left:0; right:0; height:200px; background:radial-gradient(120% 80% at 30% 0%, rgba(94,92,230,0.26), transparent 70%); pointer-events:none; }
+  .hero-inner { position:relative; }
+  .hero-badge { margin-bottom:12px; }
+  .hero-title { font-size:32px; font-weight:700; letter-spacing:-0.7px; }
+  .hero-meta { display:flex; align-items:center; gap:6px; margin-top:8px; color:var(--label-2); font-size:15px; letter-spacing:-0.2px; flex-wrap:wrap; }
+  .hero-meta svg { width:15px; height:15px; opacity:0.85; flex-shrink:0; }
+  .hero-count { margin-top:18px; display:flex; align-items:baseline; gap:8px; }
+  .hero-count .num { font-size:44px; font-weight:700; letter-spacing:-1px; color:var(--accent-text); line-height:1; }
+  .hero-count .lbl { font-size:16px; color:var(--label-2); font-weight:500; }
+  .hero-crew { display:flex; align-items:center; gap:12px; margin-top:20px; flex-wrap:wrap; }
+  .hero-crew .avatars { flex-wrap:wrap; }
+  .hero-crew .avatar { border-color:var(--bg); }
+
+  .section-label { font-size:13px; font-weight:600; color:var(--label-2); text-transform:uppercase; letter-spacing:0.4px; padding:0 22px; margin:18px 0 8px; }
+
+  .status-row { display:flex; gap:8px; padding:0 18px; }
+  .status-pill { flex:1; padding:11px 0; border-radius:var(--r-pill); border:1px solid var(--separator); background:var(--card); color:var(--label-2); font-size:15px; font-weight:600; cursor:pointer; transition:all 0.18s var(--ease); letter-spacing:-0.2px; }
+  .status-pill:active { transform:scale(0.96); }
+  .status-pill.on-yes { background:var(--green-tint); border-color:transparent; color:var(--green); }
+  .status-pill.on-maybe { background:rgba(255,159,0,0.18); border-color:transparent; color:var(--amber); }
+  .status-pill.on-no { background:rgba(255,69,58,0.18); border-color:transparent; color:var(--red); }
+  /* Event-Status-Steuerung im Detail (Ticket 0007) -- aktive Pille faerbt sich wie das Badge */
+  #d-statusctl .status-pill.st-on[data-st="plan"] { background:rgba(10,132,255,0.16); border-color:transparent; color:#4DA3FF; }
+  #d-statusctl .status-pill.st-on[data-st="live"] { background:var(--green-tint); border-color:transparent; color:var(--green); }
+  #d-statusctl .status-pill.st-on[data-st="past"] { background:rgba(142,142,147,0.18); border-color:transparent; color:var(--label-2); }
+  .deadline { display:flex; align-items:center; gap:6px; padding:0 22px; margin-top:10px; color:var(--label-2); font-size:13px; letter-spacing:-0.1px; }
+  .deadline svg { width:13px; height:13px; opacity:0.8; }
+  .deadline b { color:var(--amber); font-weight:600; }
+
+  .modules { margin:0 18px; background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); overflow:hidden; }
+  .mod { display:flex; align-items:center; gap:14px; padding:13px 16px; cursor:pointer; transition:background 0.15s ease; position:relative; }
+  .mod:active { background:var(--card-2); }
+  .mod + .mod::before { content:""; position:absolute; top:0; left:62px; right:0; height:0.5px; background:var(--separator); }
+  .mod-icon { width:32px; height:32px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .mod-icon svg { width:19px; height:19px; color:#fff; }
+  .mod-body { flex:1; min-width:0; }
+  .mod-title { font-size:16px; font-weight:500; letter-spacing:-0.3px; }
+  .mod-sub { font-size:13px; color:var(--label-2); margin-top:1px; letter-spacing:-0.1px; }
+  .chevron { color:#545458; width:14px; height:14px; flex-shrink:0; }
+  .bottom-pad { height:40px; }
+
+  /* TERMIN */
+  .intro { padding:4px 22px; color:var(--label-2); font-size:15px; line-height:1.45; letter-spacing:-0.2px; }
+  .opts { padding:4px 16px 0; }
+  .opt { background:var(--card); border:0.5px solid var(--card-border); border-radius:18px; padding:16px; margin-bottom:12px; }
+  .opt.best { border-color:rgba(48,209,88,0.5); box-shadow:0 0 0 1px rgba(48,209,88,0.25), 0 8px 24px rgba(48,209,88,0.08); }
+  .opt-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .opt-date { font-size:17px; font-weight:600; letter-spacing:-0.3px; }
+  .opt-best-badge { display:flex; align-items:center; gap:4px; background:var(--green-tint); color:var(--green); font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
+  .opt-best-badge svg { width:12px; height:12px; }
+  .opt-stats { font-size:13px; color:var(--label-2); margin-top:10px; letter-spacing:-0.1px; }
+  .opt-stats b { color:var(--label); font-weight:600; }
+  .bar { height:6px; border-radius:3px; background:rgba(255,255,255,0.10); margin-top:8px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:3px; background:var(--green); }
+  .opt-people { display:flex; align-items:center; margin-top:12px; flex-wrap:wrap; }
+  .av-sm { width:26px; height:26px; border-radius:50%; border:2px solid var(--card); margin-left:-7px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:10px; font-weight:600; }
+  .av-sm:first-child { margin-left:0; }
+  .av-sm.cant { filter:grayscale(1); opacity:0.3; }
+  .opt-toggle { display:flex; gap:8px; margin-top:14px; }
+  .tg { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 0; border-radius:12px; border:1px solid var(--separator); background:transparent; color:var(--label-2); font-size:14px; font-weight:600; cursor:pointer; transition:all 0.16s var(--ease); letter-spacing:-0.2px; }
+  .tg:active { transform:scale(0.96); }
+  .tg svg { width:15px; height:15px; }
+  .tg.yes.on { background:var(--green-tint); border-color:transparent; color:var(--green); }
+  .tg.no.on { background:rgba(255,69,58,0.18); border-color:transparent; color:var(--red); }
+
+  /* KOSTEN */
+  .bal-amount { font-size:48px; font-weight:700; letter-spacing:-1.2px; line-height:1; }
+  .bal-amount.pos { color:var(--green); }
+  .bal-amount.neg { color:var(--red); }
+  .bal-label { font-size:16px; color:var(--label-2); font-weight:500; margin-top:8px; }
+  .bal-sub { font-size:13px; color:var(--label-2); margin-top:14px; letter-spacing:-0.1px; }
+  .expense { display:flex; align-items:center; gap:13px; padding:13px 16px; position:relative; }
+  .expense + .expense::before, .settle + .settle::before { content:""; position:absolute; top:0; left:60px; right:0; height:0.5px; background:var(--separator); }
+  .ex-avatar, .settle-av { width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; }
+  .ex-body { flex:1; min-width:0; }
+  .ex-title { font-size:16px; font-weight:500; letter-spacing:-0.3px; }
+  .ex-sub { font-size:13px; color:var(--label-2); margin-top:1px; }
+  .ex-amount { font-size:16px; font-weight:600; letter-spacing:-0.3px; flex-shrink:0; }
+  .settle { display:flex; align-items:center; gap:12px; padding:13px 16px; position:relative; }
+  .settle-avas { display:flex; flex-shrink:0; }
+  .settle-avas .settle-av { border:2px solid var(--card); }
+  .settle-avas .settle-av:last-child { margin-left:-10px; }
+  .settle-body { flex:1; min-width:0; font-size:15px; letter-spacing:-0.2px; color:var(--label-2); }
+  .settle-body b { color:var(--label); font-weight:600; }
+  .settle-amount { font-size:16px; font-weight:600; color:var(--amber); letter-spacing:-0.3px; flex-shrink:0; }
+  .add-expense { display:flex; align-items:center; justify-content:center; gap:8px; margin:16px 18px 0; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); width:calc(100% - 36px); }
+  .add-expense:active { transform:scale(0.97); }
+  .add-expense svg { width:18px; height:18px; }
+
+  /* CREATE SHEET */
+  .backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.5); opacity:0; pointer-events:none; transition:opacity 0.3s ease; z-index:250; }
+  .backdrop.open { opacity:1; pointer-events:auto; }
+  .sheet { position:absolute; left:0; right:0; top:46px; bottom:0; background:#1C1C1E; border-radius:16px 16px 0 0; transform:translateY(100%); transition:transform 0.42s var(--ease); z-index:300; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .sheet.open { transform:translateY(0); }
+  .sheet-bar { display:flex; align-items:center; justify-content:space-between; padding:15px 18px; position:sticky; top:0; background:#1C1C1E; border-bottom:0.5px solid var(--separator); border-radius:16px 16px 0 0; z-index:2; }
+  .sheet-cancel { border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:4px; letter-spacing:-0.3px; }
+  .sheet-title { font-size:17px; font-weight:600; letter-spacing:-0.3px; }
+  .sheet-create { border:none; background:none; color:var(--accent); font-size:17px; font-weight:600; cursor:pointer; padding:4px; letter-spacing:-0.3px; }
+  .sheet-body { padding:18px; }
+  .type-row { display:flex; gap:12px; }
+  .type-card { flex:1; padding:18px 12px; border-radius:16px; border:1.5px solid var(--separator); background:var(--bg); cursor:pointer; text-align:center; transition:all 0.18s var(--ease); }
+  .type-card:active { transform:scale(0.97); }
+  .type-card.on { border-color:var(--accent); background:var(--accent-tint); }
+  .type-card svg { width:28px; height:28px; color:var(--label-2); margin-bottom:8px; transition:color 0.18s; }
+  .type-card.on svg { color:var(--accent-text); }
+  .tc-label { font-size:16px; font-weight:600; letter-spacing:-0.3px; }
+  .type-card.on .tc-label { color:var(--accent-text); }
+  .modules-hint { font-size:13px; color:var(--label-2); line-height:1.5; padding:12px 4px 4px; letter-spacing:-0.1px; }
+  .modules-hint b { color:var(--label); font-weight:500; }
+  .flabel { font-size:13px; font-weight:600; color:var(--label-2); text-transform:uppercase; letter-spacing:0.4px; margin:20px 4px 8px; }
+  .fgroup { background:var(--bg); border:0.5px solid var(--card-border); border-radius:16px; overflow:hidden; }
+  .frow { display:flex; align-items:center; gap:12px; padding:0 16px; position:relative; min-height:52px; }
+  .frow + .frow::before { content:""; position:absolute; top:0; left:16px; right:0; height:0.5px; background:var(--separator); }
+  .frow label { font-size:16px; color:var(--label); flex-shrink:0; letter-spacing:-0.3px; }
+  .frow input { flex:1; border:none; background:none; color:var(--label); font-size:16px; text-align:right; outline:none; font-family:inherit; letter-spacing:-0.3px; min-width:0; }
+  .frow input::placeholder { color:#5A5A5E; }
+  .fvalue { flex:1; text-align:right; color:var(--accent-text); font-size:16px; letter-spacing:-0.3px; display:flex; align-items:center; justify-content:flex-end; gap:4px; cursor:pointer; }
+  .fvalue svg { width:14px; height:14px; color:#545458; }
+  .switch { width:51px; height:31px; border-radius:999px; background:#39393D; position:relative; cursor:pointer; transition:background 0.25s var(--ease); flex-shrink:0; }
+  .switch.on { background:var(--green); }
+  .switch::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; transition:transform 0.25s var(--ease); box-shadow:0 2px 5px rgba(0,0,0,0.3); }
+  .switch.on::after { transform:translateX(20px); }
+
+  .invited { display:flex; align-items:center; padding:10px 16px 14px; flex-wrap:wrap; }
+  .invited .avatar { border-color:var(--bg); }
+  .add-person { width:30px; height:30px; border-radius:50%; border:1.5px dashed #545458; background:none; color:var(--label-2); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; margin-left:6px; transition:transform 0.15s var(--ease); }
+  .add-person svg { width:15px; height:15px; }
+  .add-person:active { transform:scale(0.92); }
+  .hint-line { font-size:13px; color:var(--label-2); padding:8px 6px 0; letter-spacing:-0.1px; }
+  .mt-row { display:flex; align-items:center; justify-content:space-between; padding:0 16px; min-height:50px; position:relative; }
+  .mt-row + .mt-row::before { content:""; position:absolute; top:0; left:16px; right:0; height:0.5px; background:var(--separator); }
+  .mt-label { font-size:16px; color:var(--label); letter-spacing:-0.3px; }
+  .ftext { width:100%; background:var(--bg); border:0.5px solid var(--card-border); border-radius:16px; padding:14px 16px; color:var(--label); font-size:16px; font-family:inherit; outline:none; resize:none; min-height:88px; letter-spacing:-0.3px; line-height:1.4; }
+  .ftext::placeholder { color:#5A5A5E; }
+  .frow.invalid input::placeholder { color:var(--red); }
+  .frow.invalid { animation:cp-shake 0.32s var(--ease); }
+  @keyframes cp-shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+
+  /* TAB VIEWS / CREW */
+  .tab-view { display:flex; flex-direction:column; flex:1; min-height:0; }
+  .tab-view.hidden { display:none; }
+  /* Raum-Code + Teilen (Ticket 0003) */
+  .room-code { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 4px 16px; padding:14px 16px; background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); }
+  .rc-label { font-size:12px; color:var(--label-2); letter-spacing:-0.1px; margin-bottom:3px; }
+  .rc-value { font-size:22px; font-weight:700; letter-spacing:3px; color:var(--label); }
+  .rc-share { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; background:var(--accent); color:#fff; border:none; border-radius:var(--r-pill); padding:10px 15px; font-size:14px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; box-shadow:0 4px 14px rgba(94,92,230,0.36); transition:transform 0.15s var(--ease); }
+  .rc-share:active { transform:scale(0.96); }
+  .rc-share svg { width:17px; height:17px; }
+  .toast { position:absolute; left:50%; bottom:104px; transform:translateX(-50%) translateY(10px); max-width:84%; text-align:center; background:rgba(44,44,46,0.97); color:#fff; padding:11px 18px; border-radius:var(--r-pill); font-size:14px; font-weight:500; box-shadow:0 10px 34px rgba(0,0,0,0.55); opacity:0; pointer-events:none; z-index:800; transition:opacity 0.22s var(--ease), transform 0.22s var(--ease); }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .crew-body { flex:1; overflow-y:auto; padding:6px 16px 100px; -webkit-overflow-scrolling:touch; }
+  .group-card { background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); padding:16px 18px; margin-bottom:12px; cursor:pointer; transition:transform 0.16s var(--ease); }
+  .group-card:active { transform:scale(0.98); }
+  .group-head { display:flex; align-items:center; justify-content:space-between; }
+  .group-name { font-size:18px; font-weight:600; letter-spacing:-0.4px; }
+  .group-count { font-size:14px; color:var(--label-2); font-weight:500; letter-spacing:-0.2px; }
+  .group-card .avatars { margin-top:12px; }
+  .group-card .avatar { border-color:var(--card); }
+  .create-group { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); margin-top:2px; }
+  .create-group:active { transform:scale(0.97); }
+  .create-group svg { width:18px; height:18px; }
+  .people-grid { display:flex; flex-wrap:wrap; padding:4px 0; }
+  .groups-empty { padding:18px; margin-bottom:12px; border:0.5px dashed var(--card-border); border-radius:var(--r-card); color:var(--label-2); font-size:14px; text-align:center; letter-spacing:-0.1px; }
+  .people-empty { width:100%; padding:8px 4px; color:var(--label-2); font-size:14px; }
+  .person { width:25%; display:flex; flex-direction:column; align-items:center; gap:7px; margin-bottom:18px; }
+  .pav { width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; font-weight:600; }
+  .pname { font-size:12px; color:var(--label-2); letter-spacing:-0.1px; }
+  .kalender-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--label-2); gap:14px; padding:40px; text-align:center; }
+  .kalender-empty svg { width:46px; height:46px; opacity:0.4; }
+  .kalender-empty div { font-size:15px; letter-spacing:-0.2px; }
+
+  /* MODULE SCREENS */
+  .wide-action { display:flex; align-items:center; justify-content:center; gap:8px; width:calc(100% - 36px); margin:16px 18px 0; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
+  .wide-action:active { transform:scale(0.97); }
+  .wide-action svg { width:18px; height:18px; }
+  /* reiseplan */
+  .stop { background:var(--card); border:0.5px solid var(--card-border); border-radius:18px; padding:15px 16px; margin:0 18px 10px; display:flex; gap:13px; align-items:center; }
+  .stop-icon { width:38px; height:38px; border-radius:11px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .stop-icon svg { width:20px; height:20px; color:#fff; }
+  .stop-body { flex:1; min-width:0; }
+  .stop-name { font-size:16px; font-weight:600; letter-spacing:-0.3px; }
+  .stop-sub { font-size:13px; color:var(--label-2); margin-top:2px; letter-spacing:-0.1px; }
+  .stop-time { font-size:13px; color:var(--accent-text); font-weight:600; flex-shrink:0; }
+  /* packliste */
+  .progress-head { padding:4px 22px 0; }
+  .ph-count { font-size:15px; color:var(--label-2); letter-spacing:-0.2px; }
+  .ph-count b { color:var(--label); font-weight:600; }
+  .ph-bar { height:6px; border-radius:3px; background:rgba(255,255,255,0.10); margin-top:10px; overflow:hidden; }
+  .ph-fill { height:100%; border-radius:3px; background:var(--green); }
+  .check-item { display:flex; align-items:center; gap:13px; padding:13px 16px; cursor:pointer; position:relative; }
+  .check-item + .check-item::before { content:""; position:absolute; top:0; left:53px; right:0; height:0.5px; background:var(--separator); }
+  .checkbox { width:24px; height:24px; border-radius:50%; border:2px solid #545458; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.18s var(--ease); }
+  .checkbox svg { width:13px; height:13px; color:#fff; opacity:0; transition:opacity 0.15s; }
+  .check-item.done .checkbox { background:var(--green); border-color:var(--green); }
+  .check-item.done .checkbox svg { opacity:1; }
+  .ci-label { font-size:16px; letter-spacing:-0.3px; transition:color 0.15s; }
+  .check-item.done .ci-label { color:var(--label-2); text-decoration:line-through; }
+  /* voting */
+  .opt.voted { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-tint); }
+  .opt-vote-badge { display:flex; align-items:center; gap:4px; background:var(--accent-tint); color:var(--accent-text); font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
+  .opt-vote-badge svg { width:12px; height:12px; }
+  .bar-fill.acc { background:var(--accent); }
+  /* flug */
+  .flight { background:var(--card); border:0.5px solid var(--card-border); border-radius:18px; padding:18px; margin:0 18px 14px; }
+  .flight-route { display:flex; align-items:center; justify-content:space-between; }
+  .airport { text-align:center; }
+  .airport.r { text-align:center; }
+  .ap-code { font-size:26px; font-weight:700; letter-spacing:-0.5px; }
+  .ap-time { font-size:14px; color:var(--label-2); margin-top:2px; letter-spacing:-0.2px; }
+  .flight-mid { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; padding:0 12px; color:var(--label-2); }
+  .flight-mid svg { width:20px; height:20px; }
+  .flight-line { width:100%; height:1px; background:var(--separator); position:relative; }
+  .flight-meta { display:flex; justify-content:space-between; margin-top:16px; padding-top:14px; border-top:0.5px solid var(--separator); }
+  .fm-item { font-size:13px; color:var(--label-2); letter-spacing:-0.1px; }
+  .fm-item b { color:var(--label); font-weight:600; display:block; margin-top:2px; }
+  /* buchungen */
+  .file-row { display:flex; align-items:center; gap:13px; padding:13px 16px; position:relative; cursor:pointer; }
+  .file-row:active { background:var(--card-2); }
+  .file-row + .file-row::before { content:""; position:absolute; top:0; left:60px; right:0; height:0.5px; background:var(--separator); }
+  .file-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+  .file-icon svg { width:19px; height:19px; color:#fff; }
+  .file-body { flex:1; min-width:0; }
+  .file-name { font-size:16px; font-weight:500; letter-spacing:-0.3px; }
+  .file-sub { font-size:13px; color:var(--label-2); margin-top:1px; letter-spacing:-0.1px; }
+
+  /* TREFFPUNKT */
+  .map-prev { height:148px; margin:0 18px 14px; border-radius:18px; background:linear-gradient(135deg,#2C2C2E,#1A1A1C); border:0.5px solid var(--card-border); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .map-prev::before { content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,0.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.045) 1px,transparent 1px); background-size:26px 26px; }
+  .map-pin { width:42px; height:42px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px rgba(94,92,230,0.55); position:relative; z-index:1; }
+  .map-pin svg { width:22px; height:22px; color:#fff; }
+  .info-val { font-size:16px; color:var(--label); letter-spacing:-0.3px; }
+  /* CALENDAR + DATE PICKER */
+  .cal-head { display:flex; align-items:center; justify-content:space-between; padding:4px 22px 14px; }
+  .cal-month { font-size:21px; font-weight:700; letter-spacing:-0.4px; }
+  .cal-nav { display:flex; gap:20px; }
+  .cal-nav button { background:none; border:none; color:var(--accent); cursor:pointer; padding:0; display:flex; }
+  .cal-nav svg { width:13px; height:22px; }
+  .cal-dow { display:grid; grid-template-columns:repeat(7,1fr); padding:0 14px; }
+  .cal-dow span { text-align:center; font-size:12px; font-weight:600; color:var(--label-2); padding-bottom:10px; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); padding:0 14px; }
+  .cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:17px; position:relative; border-radius:50%; cursor:pointer; letter-spacing:-0.3px; }
+  .cal-day.muted { color:#39393C; pointer-events:none; }
+  .cal-day .dot { width:5px; height:5px; border-radius:50%; position:absolute; bottom:6px; left:50%; transform:translateX(-50%); }
+  .cal-day.today { color:var(--accent-text); font-weight:700; }
+  /* Abwesenheit (Ticket 0008): eigene = roter Tag; fremde = roter Punkt oben rechts */
+  .cal-day.av-other::after { content:""; position:absolute; top:6px; right:6px; width:6px; height:6px; border-radius:50%; background:var(--red); }
+  .cal-day.av-me { background:var(--red); color:#fff; font-weight:600; }
+  .cal-day.av-me.av-other::after { background:#fff; }   /* eigen+fremd: weisser Punkt auf rotem Tag */
+  .file-empty { padding:16px; text-align:center; color:var(--label-2); font-size:14px; letter-spacing:-0.1px; }
+  .dp-day.start, .dp-day.end, .dp-day.solo { background:var(--accent); color:#fff; font-weight:600; }
+  .dp-day.between { background:var(--accent-tint); border-radius:0; color:var(--accent-text); }
+  .dp-day.start { border-radius:50% 0 0 50%; }
+  .dp-day.end { border-radius:0 50% 50% 0; }
+  .dp-day.solo { border-radius:50%; }
+  .dp-summary { text-align:center; font-size:15px; color:var(--accent-text); font-weight:600; padding:20px; letter-spacing:-0.2px; }
+  /* PICK ROW */
+  .pick-row { display:flex; align-items:center; gap:13px; padding:12px 16px; cursor:pointer; position:relative; }
+  .pick-row + .pick-row::before { content:""; position:absolute; top:0; left:16px; right:0; height:0.5px; background:var(--separator); }
+  .pick-row.has-av + .pick-row.has-av::before { left:59px; }
+  .pick-body { flex:1; min-width:0; }
+  .pick-name { font-size:16px; font-weight:500; letter-spacing:-0.3px; }
+  .pick-sub { font-size:13px; color:var(--label-2); margin-top:1px; letter-spacing:-0.1px; }
+  .pick-check { width:24px; height:24px; border-radius:50%; border:2px solid #545458; flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.16s var(--ease); }
+  .pick-check svg { width:13px; height:13px; color:#fff; opacity:0; }
+  .pick-row.sel .pick-check { background:var(--accent); border-color:var(--accent); }
+  .pick-row.sel .pick-check svg { opacity:1; }
+  .pav-sm { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:600; flex-shrink:0; }
+  .nav-done { background:none; border:none; color:var(--accent); font-size:17px; font-weight:600; cursor:pointer; padding:0; letter-spacing:-0.2px; }
+  .nav-cancel { background:none; border:none; color:var(--accent); font-size:17px; cursor:pointer; padding:0; letter-spacing:-0.2px; }
+
+  .ce-date { width:46px; height:46px; border-radius:12px; background:var(--card-2); display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0; }
+  .ce-d { font-size:18px; font-weight:700; line-height:1; letter-spacing:-0.5px; }
+  .ce-m { font-size:11px; color:var(--label-2); font-weight:600; text-transform:uppercase; margin-top:2px; }
+  .ce-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+  @media (prefers-reduced-motion:reduce) { *, .card, .seg-indicator, .add-btn, .screen, .status-pill, .tg { transition:none !important; animation:none !important; } .card { opacity:1; transform:none; } }
+
+  /* ONBOARDING (login-loser Zugang: Raum-Code + Name) */
+  .onboarding { position:absolute; inset:0; z-index:600; background:radial-gradient(120% 70% at 50% 0%, rgba(94,92,230,0.20), transparent 65%), var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; padding:32px 26px; }
+  .onboarding.open { display:flex; }
+  .ob-inner { width:100%; max-width:360px; }
+  .ob-logo { font-size:40px; font-weight:700; letter-spacing:-1px; text-align:center; }
+  .ob-tagline { font-size:15px; color:var(--label-2); text-align:center; margin-top:6px; letter-spacing:-0.2px; }
+  .ob-card { background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); padding:18px; margin-top:30px; }
+  .ob-label { font-size:13px; font-weight:600; color:var(--label-2); text-transform:uppercase; letter-spacing:0.4px; padding:2px 2px 12px; }
+  .ob-field { display:flex; gap:8px; }
+  .ob-input { width:100%; background:var(--bg); border:0.5px solid var(--card-border); border-radius:14px; padding:15px 16px; color:var(--label); font-size:16px; font-family:inherit; outline:none; letter-spacing:-0.3px; }
+  .ob-input::placeholder { color:#5A5A5E; }
+  .ob-name { margin-top:10px; }
+  #ob-room { text-transform:uppercase; flex:1; min-width:0; }
+  .ob-newroom { flex-shrink:0; border:none; background:var(--card-2); color:var(--accent-text); font-size:15px; font-weight:600; padding:0 16px; border-radius:14px; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
+  .ob-newroom:active { transform:scale(0.96); }
+  .ob-join { width:100%; margin-top:14px; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; box-shadow:0 4px 16px rgba(94,92,230,0.4); transition:transform 0.15s var(--ease); }
+  .ob-join:active { transform:scale(0.97); }
+  .ob-hint { font-size:13px; color:var(--label-2); text-align:center; margin-top:14px; letter-spacing:-0.1px; line-height:1.4; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ONBOARDING (login-loser Zugang: Raum-Code + Name; ?room=CODE -> direkter Einstieg) -->
+  <div class="onboarding open" id="onboarding">
+    <div class="ob-inner">
+      <div class="ob-logo">Crew</div>
+      <div class="ob-tagline">Urlaube &amp; Treffen gemeinsam planen</div>
+      <div class="ob-card">
+        <div class="ob-label" id="ob-room-label" style="display:none"></div>
+        <div class="ob-field" id="ob-room-wrap">
+          <input id="ob-room" class="ob-input" placeholder="Raum-Code" autocomplete="off" autocapitalize="characters" maxlength="12">
+          <button class="ob-newroom" id="ob-newroom" type="button">Neu</button>
+        </div>
+        <input id="ob-name" class="ob-input ob-name" placeholder="Dein Name" autocomplete="off">
+        <button class="ob-join" id="ob-join" type="button">Beitreten</button>
+        <div class="ob-hint">Kein Login. Raum-Code teilen, Name eintippen, los.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="home-view">
+    <div class="tab-view" id="view-events">
+    <header class="header">
+      <div><div class="greeting">Eure Crew</div><h1 class="title">Geplant</h1></div>
+      <button class="add-btn" aria-label="Neues Event">+</button>
+    </header>
+    <div class="segmented">
+      <div class="seg-indicator" id="indicator"></div>
+      <button class="seg-btn" data-tab="urlaube">Urlaube</button>
+      <button class="seg-btn inactive" data-tab="treffen">Treffen</button>
+    </div>
+
+    <!-- Cards werden live aus rooms/{roomCode}/events gerendert (renderEvents) -->
+    <main class="list" id="urlaube"></main>
+
+    <main class="list hidden" id="treffen"></main>
+    </div>
+
+    <div class="tab-view hidden" id="view-crew">
+      <header class="header">
+        <div><div class="greeting">Eure Leute</div><h1 class="title">Crew</h1></div>
+        <button class="add-btn" aria-label="Hinzufügen">+</button>
+      </header>
+      <div class="crew-body">
+        <!-- Raum-Code sichtbar + teilen (Ticket 0003) -->
+        <div class="room-code" id="room-code">
+          <div class="rc-info">
+            <div class="rc-label">Raum-Code</div>
+            <div class="rc-value" id="rc-code">––––––</div>
+          </div>
+          <button class="rc-share" id="rc-share" type="button" aria-label="Raum teilen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg>
+            Teilen
+          </button>
+        </div>
+        <div class="section-label" style="padding:0 4px">Deine Gruppen</div>
+        <!-- Gruppen-Feature folgt spaeter (Ticket 0004: nur Empty-State, NICHT bauen) -->
+        <div class="groups-empty" id="groups-empty">Noch keine Gruppen</div>
+        <button class="create-group" data-open="groupedit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Gruppe erstellen</button>
+
+        <div class="section-label" style="padding:16px 4px 8px">Alle Leute</div>
+        <!-- people-grid wird LIVE aus membersCache gerendert (renderCrew, Ticket 0004) -->
+        <div class="people-grid" id="people-grid"></div>
+      </div>
+    </div>
+
+    <div class="tab-view hidden" id="view-kalender">
+      <header class="header"><div><div class="greeting">Alle Termine</div><h1 class="title">Kalender</h1></div></header>
+      <div class="crew-body">
+        <div class="cal-head">
+          <div class="cal-month">Juli 2026</div>
+          <div class="cal-nav"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M15 18l-6-6 6-6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 18l6-6-6-6"/></svg></button></div>
+        </div>
+        <div class="cal-dow"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div class="section-label" style="padding:20px 4px 8px">Kommende Termine</div>
+        <!-- Live aus rooms/{room}/events, nach startDate sortiert (renderUpcoming, Ticket 0008) -->
+        <div class="modules" id="cal-upcoming"></div>
+      </div>
+    </div>
+
+    <nav class="tabbar">
+      <button class="tab active" data-view="events"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg><span>Events</span></button>
+      <button class="tab" data-view="kalender"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg><span>Kalender</span></button>
+      <button class="tab" data-view="crew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/></svg><span>Crew</span></button>
+    </nav>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="screen" id="detail">
+    <div class="navbar">
+      <button class="nav-btn" data-close="detail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Zurück</button>
+      <button class="nav-icon" aria-label="Teilen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg></button>
+    </div>
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="hero-badge" id="d-badge"></div>
+        <div class="hero-title" id="d-title">Mallorca 2026</div>
+        <div class="hero-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg> <span id="d-loc">Palma de Mallorca</span> <span class="dot"></span> <span id="d-date">12.–19. Juli</span></div>
+        <div class="hero-count"><span class="num" id="d-num">22</span><span class="lbl" id="d-clabel">Tage bis los geht's</span></div>
+        <div class="hero-crew"><div class="avatars" id="d-avatars"></div><div class="going"><b id="d-going">6</b> dabei</div></div>
+      </div>
+    </div>
+
+    <div id="d-rsvp">
+      <div class="section-label">Bist du dabei?</div>
+      <div class="status-row">
+        <button class="status-pill on-yes" data-s="yes">Dabei</button>
+        <button class="status-pill" data-s="maybe">Vielleicht</button>
+        <button class="status-pill" data-s="no">Raus</button>
+      </div>
+      <div class="deadline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Zu-/Absagen noch bis <b id="d-deadline">1. Juli</b> möglich</div>
+    </div>
+
+    <div class="section-label">Event-Status</div>
+    <div class="status-row" id="d-statusctl">
+      <button class="status-pill" type="button" data-st="plan">Planung</button>
+      <button class="status-pill" type="button" data-st="live">Läuft</button>
+      <button class="status-pill" type="button" data-st="past">Vorbei</button>
+    </div>
+
+    <div class="section-label">Planung</div>
+    <div class="modules">
+      <div class="mod" data-open="termin">
+        <div class="mod-icon" style="background:#007AFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4M9 14l2 2 4-4"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Termin-Findung</div><div class="mod-sub">5 von 6 haben abgestimmt</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="reiseplan">
+        <div class="mod-icon" style="background:#FF9500"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5-2V6l5 2 6-2 5 2v12l-5-2-6 2z"/><path d="M9 8v12M15 6v12"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Reiseplan</div><div class="mod-sub">Hotel + 3 Stationen</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="packliste">
+        <div class="mod-icon" style="background:#34C759"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M9 13l2 2 4-4"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Packliste</div><div class="mod-sub">4 von 12 erledigt</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="kosten">
+        <div class="mod-icon" style="background:#5E5CE6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Kosten</div><div class="mod-sub">320 € geteilt · dir stehen 45 € zu</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="voting">
+        <div class="mod-icon" style="background:#FF2D55"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Voting</div><div class="mod-sub">Hotel: 3 Optionen offen</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="flug">
+        <div class="mod-icon" style="background:#00C7BE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Flug</div><div class="mod-sub">Hin 12.7. · 06:40 ab BER</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="buchungen">
+        <div class="mod-icon" style="background:#8E8E93"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Buchungen</div><div class="mod-sub">2 Dateien</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+      <div class="mod" data-open="treffpunkt">
+        <div class="mod-icon" style="background:#FF453A"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+        <div class="mod-body"><div class="mod-title">Treffpunkt</div><div class="mod-sub">Terminal 1, BER · 05:00</div></div>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- TERMIN -->
+  <div class="screen" id="termin">
+    <div class="navbar">
+      <button class="nav-btn" data-close="termin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Termin-Findung</div>
+      <div class="nav-spacer"></div>
+    </div>
+    <div class="hero" style="padding-bottom:4px">
+      <div class="hero-inner"><div class="hero-title" style="font-size:28px">Wann passt's allen?</div></div>
+    </div>
+    <div class="intro">Trag ein, wann du <b style="color:var(--green)">kannst</b> oder <b style="color:var(--red)">nicht kannst</b>. Sobald alle dabei sind, seht ihr den besten Termin.</div>
+
+    <div class="section-label" style="margin-top:16px">Bester Termin</div>
+    <div class="opts">
+      <div class="opt best">
+        <div class="opt-head"><div class="opt-date">12.–19. Juli</div><div class="opt-best-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> Passt allen</div></div>
+        <div class="opt-stats"><b>6 von 6</b> können</div>
+        <div class="bar"><div class="bar-fill" style="width:100%"></div></div>
+        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#FF2D55">TS</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#AF52DE">LM</div><div class="av-sm" style="background:#007AFF">FH</div></div>
+        <div class="opt-toggle"><button class="tg yes on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
+      </div>
+    </div>
+
+    <div class="section-label">Weitere Optionen</div>
+    <div class="opts">
+      <div class="opt">
+        <div class="opt-head"><div class="opt-date">19.–26. Juli</div></div>
+        <div class="opt-stats"><b>5 von 6</b> können · 1 kann nicht</div>
+        <div class="bar"><div class="bar-fill" style="width:83%"></div></div>
+        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#FF2D55">TS</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#007AFF">FH</div><div class="av-sm cant" style="background:#AF52DE">LM</div></div>
+        <div class="opt-toggle"><button class="tg yes on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
+      </div>
+      <div class="opt">
+        <div class="opt-head"><div class="opt-date">5.–12. Juli</div></div>
+        <div class="opt-stats"><b>4 von 6</b> können · 2 kann nicht</div>
+        <div class="bar"><div class="bar-fill" style="width:66%"></div></div>
+        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#AF52DE">LM</div><div class="av-sm cant" style="background:#FF2D55">TS</div><div class="av-sm cant" style="background:#007AFF">FH</div></div>
+        <div class="opt-toggle"><button class="tg yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
+      </div>
+      <div class="opt">
+        <div class="opt-head"><div class="opt-date">2.–9. August</div></div>
+        <div class="opt-stats"><b>3 von 6</b> können · 3 kann nicht</div>
+        <div class="bar"><div class="bar-fill" style="width:50%"></div></div>
+        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#007AFF">FH</div><div class="av-sm cant" style="background:#34C759">JL</div><div class="av-sm cant" style="background:#FF2D55">TS</div><div class="av-sm cant" style="background:#AF52DE">LM</div></div>
+        <div class="opt-toggle"><button class="tg yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
+      </div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- KOSTEN -->
+  <div class="screen" id="kosten">
+    <div class="navbar">
+      <button class="nav-btn" data-close="kosten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Kosten</div>
+      <div class="nav-spacer"></div>
+    </div>
+    <div class="hero">
+      <div class="hero-inner">
+        <div class="bal-amount pos">+45 €</div>
+        <div class="bal-label">stehen dir zurück</div>
+        <div class="bal-sub">Gesamt 318 € · 6 Personen · 53 € pro Kopf</div>
+      </div>
+    </div>
+
+    <div class="section-label">Ausgaben</div>
+    <div class="modules">
+      <div class="expense"><div class="ex-avatar" style="background:#FF9500">MK</div><div class="ex-body"><div class="ex-title">Hotel-Anzahlung</div><div class="ex-sub">Du hast gezahlt</div></div><div class="ex-amount">98 €</div></div>
+      <div class="expense"><div class="ex-avatar" style="background:#34C759">JL</div><div class="ex-body"><div class="ex-title">Mietwagen</div><div class="ex-sub">JL hat gezahlt</div></div><div class="ex-amount">120 €</div></div>
+      <div class="expense"><div class="ex-avatar" style="background:#FF2D55">TS</div><div class="ex-body"><div class="ex-title">Großeinkauf</div><div class="ex-sub">TS hat gezahlt</div></div><div class="ex-amount">60 €</div></div>
+      <div class="expense"><div class="ex-avatar" style="background:#00C7BE">BN</div><div class="ex-body"><div class="ex-title">Bootstour</div><div class="ex-sub">BN hat gezahlt</div></div><div class="ex-amount">40 €</div></div>
+    </div>
+
+    <div class="section-label">Wer schuldet wem</div>
+    <div class="modules">
+      <div class="settle"><div class="settle-avas"><div class="settle-av" style="background:#007AFF">FH</div><div class="settle-av" style="background:#FF9500">MK</div></div><div class="settle-body"><b>FH</b> schuldet <b>dir</b></div><div class="settle-amount">45 €</div></div>
+      <div class="settle"><div class="settle-avas"><div class="settle-av" style="background:#AF52DE">LM</div><div class="settle-av" style="background:#34C759">JL</div></div><div class="settle-body"><b>LM</b> schuldet <b>JL</b></div><div class="settle-amount">53 €</div></div>
+      <div class="settle"><div class="settle-avas"><div class="settle-av" style="background:#00C7BE">BN</div><div class="settle-av" style="background:#34C759">JL</div></div><div class="settle-body"><b>BN</b> schuldet <b>JL</b></div><div class="settle-amount">13 €</div></div>
+    </div>
+
+    <button class="add-expense"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Ausgabe hinzufügen</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- REISEPLAN -->
+  <div class="screen" id="reiseplan">
+    <div class="navbar">
+      <button class="nav-btn" data-close="reiseplan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Reiseplan</div><div class="nav-spacer"></div>
+    </div>
+    <div class="section-label">Unterkunft</div>
+    <div class="stop">
+      <div class="stop-icon" style="background:#FF9500"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
+      <div class="stop-body"><div class="stop-name">Hotel Sol Beach</div><div class="stop-sub">Playa de Palma · Check-in 15:00</div></div>
+      <div class="stop-time">12.7.</div>
+    </div>
+    <div class="section-label">Programm</div>
+    <div class="stop">
+      <div class="stop-icon" style="background:#00C7BE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 18c2 0 2-1.5 4-1.5S10 18 12 18s2-1.5 4-1.5 2 1.5 4 1.5"/><path d="M2 13c2 0 2-1.5 4-1.5S10 13 12 13s2-1.5 4-1.5 2 1.5 4 1.5"/><circle cx="12" cy="6" r="2"/></svg></div>
+      <div class="stop-body"><div class="stop-name">Strandtag Es Trenc</div><div class="stop-sub">Naturstrand im Süden</div></div>
+      <div class="stop-time">Tag 2</div>
+    </div>
+    <div class="stop">
+      <div class="stop-icon" style="background:#007AFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18l2-6h14l2 6"/><path d="M5 18a2 2 0 104 0M15 18a2 2 0 104 0"/><path d="M9 12V6h4l3 6"/></svg></div>
+      <div class="stop-body"><div class="stop-name">Bootstour Caló des Moro</div><div class="stop-sub">Abfahrt Hafen 10:00</div></div>
+      <div class="stop-time">Tag 3</div>
+    </div>
+    <div class="stop">
+      <div class="stop-icon" style="background:#AF52DE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-5h6v5"/></svg></div>
+      <div class="stop-body"><div class="stop-name">Altstadt Palma</div><div class="stop-sub">Kathedrale & Tapas</div></div>
+      <div class="stop-time">Tag 4</div>
+    </div>
+    <button class="wide-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Station hinzufügen</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- PACKLISTE -->
+  <div class="screen" id="packliste">
+    <div class="navbar">
+      <button class="nav-btn" data-close="packliste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Packliste</div><div class="nav-spacer"></div>
+    </div>
+    <div class="progress-head">
+      <div class="ph-count"><b>4</b> von 12 erledigt</div>
+      <div class="ph-bar"><div class="ph-fill" style="width:33%"></div></div>
+    </div>
+    <div class="section-label">Dokumente</div>
+    <div class="fgroup">
+      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Reisepass</div></div>
+      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Flugticket</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Versicherungskarte</div></div>
+    </div>
+    <div class="section-label">Kleidung</div>
+    <div class="fgroup">
+      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Badehose</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">T-Shirts</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Sonnenbrille</div></div>
+      <div class="check-item done"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Sneaker</div></div>
+    </div>
+    <div class="section-label">Technik & Sonstiges</div>
+    <div class="fgroup">
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Ladegerät</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Powerbank</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Sonnencreme</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Kopfhörer</div></div>
+      <div class="check-item"><div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div><div class="ci-label">Reiseapotheke</div></div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- VOTING -->
+  <div class="screen" id="voting">
+    <div class="navbar">
+      <button class="nav-btn" data-close="voting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Voting</div><div class="nav-spacer"></div>
+    </div>
+    <div class="hero" style="padding-bottom:4px"><div class="hero-inner"><div class="hero-title" style="font-size:28px">Welches Hotel?</div></div></div>
+    <div class="intro">4 von 6 haben abgestimmt. Tipp deine Wahl.</div>
+    <div class="opts" style="margin-top:8px">
+      <div class="opt voted vote-opt">
+        <div class="opt-head"><div class="opt-date">Hotel Sol Beach</div><div class="opt-vote-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> Deine Stimme</div></div>
+        <div class="opt-stats"><b>3</b> Stimmen</div>
+        <div class="bar"><div class="bar-fill acc" style="width:75%"></div></div>
+        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#00C7BE">BN</div></div>
+      </div>
+      <div class="opt vote-opt">
+        <div class="opt-head"><div class="opt-date">Iberostar Playa</div></div>
+        <div class="opt-stats"><b>1</b> Stimme</div>
+        <div class="bar"><div class="bar-fill acc" style="width:25%"></div></div>
+        <div class="opt-people"><div class="av-sm" style="background:#FF2D55">TS</div></div>
+      </div>
+      <div class="opt vote-opt">
+        <div class="opt-head"><div class="opt-date">Belvedere Resort</div></div>
+        <div class="opt-stats">Noch keine Stimmen</div>
+        <div class="bar"><div class="bar-fill acc" style="width:0%"></div></div>
+      </div>
+    </div>
+    <button class="wide-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Neue Abstimmung</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- FLUG -->
+  <div class="screen" id="flug">
+    <div class="navbar">
+      <button class="nav-btn" data-close="flug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Flug</div><div class="nav-spacer"></div>
+    </div>
+    <div class="section-label">Hinflug · Sa 12. Juli</div>
+    <div class="flight">
+      <div class="flight-route">
+        <div class="airport"><div class="ap-code">BER</div><div class="ap-time">06:40</div></div>
+        <div class="flight-mid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg><div class="flight-line"></div></div>
+        <div class="airport r"><div class="ap-code">PMI</div><div class="ap-time">09:15</div></div>
+      </div>
+      <div class="flight-meta">
+        <div class="fm-item">Airline<b>Eurowings</b></div>
+        <div class="fm-item">Flug<b>EW 7634</b></div>
+        <div class="fm-item">Dauer<b>2h 35m</b></div>
+      </div>
+    </div>
+    <div class="section-label">Rückflug · Sa 19. Juli</div>
+    <div class="flight">
+      <div class="flight-route">
+        <div class="airport"><div class="ap-code">PMI</div><div class="ap-time">18:20</div></div>
+        <div class="flight-mid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg><div class="flight-line"></div></div>
+        <div class="airport r"><div class="ap-code">BER</div><div class="ap-time">20:55</div></div>
+      </div>
+      <div class="flight-meta">
+        <div class="fm-item">Airline<b>Eurowings</b></div>
+        <div class="fm-item">Flug<b>EW 7635</b></div>
+        <div class="fm-item">Dauer<b>2h 35m</b></div>
+      </div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- BUCHUNGEN -->
+  <div class="screen" id="buchungen">
+    <div class="navbar">
+      <button class="nav-btn" data-close="buchungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Buchungen</div><div class="nav-spacer"></div>
+    </div>
+    <div class="section-label">Dateien</div>
+    <div class="modules">
+      <div class="file-row">
+        <div class="file-icon" style="background:#FF3B30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+        <div class="file-body"><div class="file-name">Hotel-Bestätigung.pdf</div><div class="file-sub">Max · 3. Juni</div></div>
+      </div>
+      <div class="file-row">
+        <div class="file-icon" style="background:#FF3B30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
+        <div class="file-body"><div class="file-name">Mietwagen-Voucher.pdf</div><div class="file-sub">Jonas · 5. Juni</div></div>
+      </div>
+      <div class="file-row">
+        <div class="file-icon" style="background:#34C759"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l5-5 4 4 3-3 4 4"/><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/></svg></div>
+        <div class="file-body"><div class="file-name">Bootstour-Ticket.jpg</div><div class="file-sub">Tim · 8. Juni</div></div>
+      </div>
+    </div>
+    <button class="wide-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Datei hinzufügen</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- TREFFPUNKT -->
+  <div class="screen" id="treffpunkt">
+    <div class="navbar">
+      <button class="nav-btn" data-close="treffpunkt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
+      <div class="nav-mid">Treffpunkt</div><div class="nav-spacer"></div>
+    </div>
+    <div class="map-prev"><div class="map-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="2.5"/></svg></div></div>
+    <div class="fgroup">
+      <div class="frow"><label>Ort</label><span class="info-val">Terminal 1, BER</span></div>
+      <div class="frow"><label>Treffen</label><span class="info-val">Sa 12.7. · 05:00</span></div>
+    </div>
+    <div class="section-label">Wer kommt (6)</div>
+    <div class="fgroup">
+      <div class="invited" style="padding:14px 16px">
+        <div class="avatar" style="background:#FF9500">MK</div><div class="avatar" style="background:#34C759">JL</div><div class="avatar" style="background:#FF2D55">TS</div><div class="avatar" style="background:#00C7BE">BN</div><div class="avatar" style="background:#AF52DE">LM</div><div class="avatar" style="background:#007AFF">FH</div>
+      </div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- DATE PICKER -->
+  <div class="screen" id="datepick">
+    <div class="navbar">
+      <button class="nav-cancel" data-close="datepick">Abbrechen</button>
+      <div class="nav-mid">Zeitraum</div>
+      <button class="nav-done" data-close="datepick">Fertig</button>
+    </div>
+    <div class="cal-head">
+      <div class="cal-month">Juli 2026</div>
+      <div class="cal-nav"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M15 18l-6-6 6-6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 18l6-6-6-6"/></svg></button></div>
+    </div>
+    <div class="cal-dow"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+    <div class="cal-grid" id="dp-grid"></div>
+    <div class="dp-summary">12. – 19. Juli · 8 Tage</div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- SINGLE DATE PICKER (Frist + Auto-Status, Ticket 0007) -->
+  <div class="screen" id="sdpick">
+    <div class="navbar">
+      <button class="nav-cancel" data-close="sdpick">Abbrechen</button>
+      <div class="nav-mid" id="sdpick-title">Datum wählen</div>
+      <button class="nav-done" data-close="sdpick">Fertig</button>
+    </div>
+    <div class="cal-head">
+      <div class="cal-month">Juli 2026</div>
+      <div class="cal-nav"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M15 18l-6-6 6-6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 18l6-6-6-6"/></svg></button></div>
+    </div>
+    <div class="cal-dow"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+    <div class="cal-grid" id="sd-grid"></div>
+    <div class="dp-summary">Tag wählen</div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- GROUP PICKER -->
+  <div class="screen" id="grouppick">
+    <div class="navbar">
+      <button class="nav-btn" data-close="grouppick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Zurück</button>
+      <div class="nav-mid">Gruppe wählen</div><div class="nav-spacer"></div>
+    </div>
+    <div class="section-label">Deine Gruppen</div>
+    <div class="fgroup">
+      <div class="pick-row pick-grp sel"><div class="pick-body"><div class="pick-name">Die Jungs</div><div class="pick-sub">Max, Jonas, Tim, Ben +2</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-grp"><div class="pick-body"><div class="pick-name">Familie</div><div class="pick-sub">Papa, Mama, Mia +2</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-grp"><div class="pick-body"><div class="pick-name">Arbeit</div><div class="pick-sub">Klaus, Dirk, Rita +5</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+    </div>
+    <button class="wide-action" data-open="groupedit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Neue Gruppe</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- GROUP EDIT -->
+  <div class="screen" id="groupedit">
+    <div class="navbar">
+      <button class="nav-cancel" data-close="groupedit">Abbrechen</button>
+      <div class="nav-mid">Neue Gruppe</div>
+      <button class="nav-done" data-close="groupedit">Sichern</button>
+    </div>
+    <div class="section-label">Name</div>
+    <div class="fgroup"><div class="frow"><input placeholder="z.B. Festival-Crew"></div></div>
+    <div class="section-label">Mitglieder</div>
+    <div class="fgroup">
+      <div class="pick-row pick-mem has-av sel"><div class="pav-sm" style="background:#FF9500">MK</div><div class="pick-body"><div class="pick-name">Max</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av sel"><div class="pav-sm" style="background:#34C759">JL</div><div class="pick-body"><div class="pick-name">Jonas</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#FF2D55">TS</div><div class="pick-body"><div class="pick-name">Tim</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#00C7BE">BN</div><div class="pick-body"><div class="pick-name">Ben</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#AF52DE">LM</div><div class="pick-body"><div class="pick-name">Leon</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#007AFF">FH</div><div class="pick-body"><div class="pick-name">Finn</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#5E5CE6">LH</div><div class="pick-body"><div class="pick-name">Lukas</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#FF9F0A">JK</div><div class="pick-body"><div class="pick-name">Jan</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- CREATE SHEET -->
+  <div class="backdrop" id="backdrop"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-bar">
+      <button class="sheet-cancel" data-close-sheet>Abbrechen</button>
+      <div class="sheet-title">Neues Event</div>
+      <button class="sheet-create" id="sheet-create-btn">Erstellen</button>
+    </div>
+    <div class="sheet-body">
+      <div class="type-row">
+        <div class="type-card on" data-type="urlaub">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M5 19l1.4-1.4M17.6 6.4L19 5"/></svg>
+          <div class="tc-label">Urlaub</div>
+        </div>
+        <div class="type-card" data-type="treffen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.4 2.7-5.3 6-5.3"/><circle cx="16.5" cy="9.5" r="2.8"/><path d="M14.5 14.8c2.9 0 4.8 1.9 4.8 5.2"/></svg>
+          <div class="tc-label">Treffen</div>
+        </div>
+      </div>
+      <div class="flabel">Basics</div>
+      <div class="fgroup">
+        <div class="frow"><label>Name</label><input id="cr-name" placeholder="z.B. Mallorca 2026"></div>
+        <div class="frow"><label>Ort</label><input id="cr-loc" placeholder="Wohin geht's?"></div>
+      </div>
+
+      <div class="flabel">Wann</div>
+      <div class="fgroup">
+        <div class="frow" data-open="datepick"><label>Zeitraum</label><span class="fvalue" id="cr-daterange">Datum wählen <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+      </div>
+
+      <div class="flabel">Wer ist dabei?</div>
+      <div class="fgroup">
+        <div class="frow" data-open="grouppick"><label>Gruppe</label><span class="fvalue">Die Jungs <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="invited">
+          <div class="avatar" style="background:#FF9500">MK</div>
+          <div class="avatar" style="background:#34C759">JL</div>
+          <div class="avatar" style="background:#FF2D55">TS</div>
+          <div class="avatar" style="background:#00C7BE">BN</div>
+          <div class="avatar" style="background:#AF52DE">LM</div>
+          <div class="avatar" style="background:#007AFF">FH</div>
+          <button class="add-person"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+      </div>
+      <div class="hint-line">Nur Eingeladene sehen dieses Event.</div>
+
+      <div class="flabel">Zusagen</div>
+      <div class="fgroup">
+        <div class="frow"><label>Frist setzen</label><div class="switch on" id="dl-switch"></div></div>
+        <div class="frow" id="dl-row"><label>Frist bis</label><span class="fvalue" id="cr-deadline">Datum wählen <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+      </div>
+
+      <div class="flabel">Status automatisch ändern (optional)</div>
+      <div class="fgroup">
+        <div class="frow"><label>Auto-Status</label><div class="switch" id="as-switch"></div></div>
+        <div class="frow" id="as-date-row" style="display:none"><label>Ab Datum</label><span class="fvalue" id="cr-asdate">Datum wählen <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <div class="frow" id="as-to-row" style="display:none"><label>Ziel-Status</label><span class="fvalue" id="cr-asto" data-to="live">Läuft <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+      </div>
+
+      <div class="flabel">Sonstige Infos (optional)</div>
+      <textarea class="ftext" id="cr-desc" placeholder="Was sollte die Crew noch wissen?"></textarea>
+
+      <div class="flabel">Module anzeigen</div>
+      <div class="fgroup" id="mt-group"></div>
+      <div class="bottom-pad"></div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getDatabase, ref, onValue, set, get, push, remove, update, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  /* ============================================================
+     Firebase-Config (public by design -- Sicherheit laeuft ueber
+     RTDB Security Rules, nicht ueber den Key). Quelle: firebase-config.js.
+     ============================================================ */
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4ueURw67clIM-QWh0eDm0gnojqxWpg98",
+    authDomain: "crew-planer.firebaseapp.com",
+    databaseURL: "https://crew-planer-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "crew-planer",
+    storageBucket: "crew-planer.firebasestorage.app",
+    messagingSenderId: "546214723292",
+    appId: "1:546214723292:web:f4c659d8be0029cc707e19",
+    measurementId: "G-6BVQ1H1N3C"
+  };
+
+  /* ============================================================
+     DATENMODELL (RTDB)
+       rooms/{roomCode}/
+         meta:               { name?, createdAt }
+                               // Raum-Metadaten (createdAt = serverTimestamp)
+         members/{memberId}: { name, color }
+                               // login-lose Teilnehmer; memberId = push-Key
+                               // color = Hex ohne '#', z.B. "5E5CE6"
+         events/{eventId}:   { type, name, location, dateRange, status,
+                               description, modules, participants, createdBy,
+                               createdAt, startDate?, deadline?, deadlineISO?,
+                               autoStatusDate?, autoStatusTo? }
+                               // type:        "urlaub" | "treffen"  (waehlt den Tab)
+                               // status:      "plan" | "live" | "past"
+                               // dateRange:   Anzeige-String, z.B. "12. - 19. Juli"
+                               // startDate:   optional ISO yyyy-mm-dd -> Countdown
+                               // deadline:    optional Anzeige-String (Zusage-Frist)
+                               // deadlineISO: optional ISO yyyy-mm-dd der Frist (Logik)
+                               // autoStatusDate: optional ISO; ab diesem Tag greift
+                               //              autoStatusTo (Auto-Status, clientseitig)
+                               // autoStatusTo:   optional "live"|"past" -- Ziel des
+                               //              Auto-Status; schiebt nur VORWAERTS
+                               // description: optionaler Freitext ("Sonstige Infos")
+                               // modules:     { Modul-Name: bool } -- Toggles je Typ
+                               // participants:{ memberId: true } -- vorerst nur Ersteller
+                               //              (Pro-Event-Teilnehmer-Auswahl -> P6)
+                               // createdBy:   memberId des Erstellers
+                               // createdAt:   serverTimestamp
+         availability/{memberId}/{YYYY-MM-DD}: true
+                               // Abwesenheit raumweit (Ticket 0008). Tag-Klick im
+                               // Kalender toggelt true/entfernt; memberId-basiert,
+                               // NICHT pro Event (pro-Event spaeter). Datum-Key rein
+                               // zahlenbasiert (calISO) -> kein verbotenes RTDB-Zeichen.
+     ============================================================ */
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const AVATAR_COLORS = ['5E5CE6','FF9500','34C759','FF2D55','00C7BE','AF52DE','007AFF','FF9F0A'];
+  const state = { room:null, name:null, memberId:null, color:null };
+  let membersCache = {};
+  let lastEvents = {};
+  let availabilityCache = {};                 // { memberId: { 'YYYY-MM-DD': true } } (Ticket 0008)
+  const calState = { year: 2026, month: 6 };  // Kalender-Tab: Start Juli 2026 (App-Demo-Rahmen, wie Picker)
+
+  // Test-/Debug-Bruecke (P1): erlaubt Playwright den direkten RTDB-Zugriff ueber
+  // denselben Client. NUR auf localhost aktiv -- auf einer Produktions-URL bleibt der
+  // Hook aus (kein RTDB-Schreibzugriff via Browser-Konsole). Wird in P6 ganz entfernt.
+  const DEBUG = ['localhost','127.0.0.1','','0.0.0.0'].includes(location.hostname);
+  if (DEBUG) window.__cp = { app, db, ref, onValue, set, get, push, remove, update, serverTimestamp, state, ready:true };
+
+  /* ---- Helfer ---- */
+  function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function initials(name){
+    const p = String(name||'').trim().split(/\s+/).filter(Boolean);
+    if (!p.length) return '?';
+    if (p.length === 1) return p[0].slice(0,2).toUpperCase();
+    return (p[0][0] + p[p.length-1][0]).toUpperCase();
+  }
+  function colorFor(seed){
+    let h = 0; for (const ch of String(seed)) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  }
+  // nur 3-/6-stellige Hex zulassen -- verhindert HTML/CSS-Injection ueber
+  // manipulierte color-Werte aus der RTDB (Testmodus hat noch keine Rules)
+  function safeColor(c){ return /^[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(String(c||'')) ? c : '5E5CE6'; }
+  function genRoomCode(){
+    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s = ''; for (let i=0;i<6;i++) s += A[Math.floor(Math.random()*A.length)];
+    return s;
+  }
+  function sanitizeRoom(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12); }
+  function urlRoom(){ return sanitizeRoom(new URLSearchParams(location.search).get('room')); }
+  // Name global (ein Name pro Nutzer) in localStorage -> Reload-Persistenz (Ticket 0003).
+  // Zwischenloesung bis echtes Login; KEIN Auth. try/catch: Privacy-Mode kann blocken.
+  const NAME_KEY = 'cp:name';
+  function loadName(){ try { return localStorage.getItem(NAME_KEY) || ''; } catch(e){ return ''; } }
+  function saveName(n){ try { localStorage.setItem(NAME_KEY, n); } catch(e){} }
+  function daysUntil(iso){
+    const t = new Date(iso + 'T00:00:00'); if (isNaN(t)) return null;
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((t - now) / 86400000);
+  }
+
+  /* ---- Onboarding ---- */
+  function showOnboarding(){
+    const ob = $('onboarding');
+    const r = urlRoom();
+    if (r){
+      $('ob-room').value = r;
+      $('ob-room-label').textContent = 'Raum ' + r;
+      $('ob-room-label').style.display = '';
+      $('ob-room-wrap').style.display = 'none';
+    } else {
+      $('ob-room-label').style.display = 'none';
+      $('ob-room-wrap').style.display = '';
+    }
+    ob.classList.add('open');
+    setTimeout(() => $('ob-name').focus(), 60);
+  }
+  let joining = false;
+  async function join(){
+    if (joining) return;                       // Doppel-Submit (Doppelklick) abfangen
+    const name = $('ob-name').value.trim();
+    let room = urlRoom() || sanitizeRoom($('ob-room').value);
+    if (!name){ $('ob-name').focus(); return; }
+    if (!room){ room = genRoomCode(); }
+    joining = true; $('ob-join').disabled = true;
+    try {
+      state.name = name; state.room = room; state.color = colorFor(name + ':' + room);
+      saveName(name);                            // Reload-Persistenz: Name merken (Ticket 0003)
+      // Raum in der URL halten
+      const u = new URL(location.href); u.searchParams.set('room', room);
+      history.replaceState(null, '', u);
+      // meta anlegen, falls Raum neu (kein Transaktions-Schutz noetig: createdAt idempotent)
+      const metaRef = ref(db, `rooms/${room}/meta`);
+      const metaSnap = await get(metaRef);
+      if (!metaSnap.exists()) await set(metaRef, { createdAt: serverTimestamp() });
+      // Member schreiben (BR-10). memberId pro Raum in sessionStorage halten, damit ein
+      // Reload im selben Tab den Eintrag aktualisiert statt zu duplizieren.
+      // sessionStorage = Tab-Session, KEIN Login/Account (Vorgabe: login-los).
+      const skey = `cp:member:${room}`;
+      let memberId = null;
+      try { memberId = sessionStorage.getItem(skey); } catch(e){}
+      if (memberId){
+        const ex = await get(ref(db, `rooms/${room}/members/${memberId}`));
+        if (!ex.exists()) memberId = null;     // Eintrag weg -> neu anlegen
+      }
+      if (!memberId){
+        memberId = push(ref(db, `rooms/${room}/members`)).key;
+        try { sessionStorage.setItem(skey, memberId); } catch(e){}
+      }
+      state.memberId = memberId;
+      await set(ref(db, `rooms/${room}/members/${memberId}`), { name, color: state.color });
+      // Home zeigen + Live-Listener
+      $('onboarding').classList.remove('open');
+      subscribeRoom(room);
+    } finally {
+      joining = false; $('ob-join').disabled = false;
+    }
+  }
+
+  /* ---- Live-Listener auf den Raum ---- */
+  function subscribeRoom(room){
+    renderRoomCode();                            // Raum-Code sichtbar machen (Ticket 0003)
+    onValue(ref(db, `rooms/${room}/members`), snap => {
+      membersCache = snap.val() || {};
+      renderEvents(lastEvents);
+      renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
+    });
+    onValue(ref(db, `rooms/${room}/events`), snap => {
+      lastEvents = snap.val() || {};
+      renderEvents(lastEvents);
+      refreshOpenDetail();                       // offenes Detail live nachziehen (Ticket 0007)
+      renderCalendar();                          // Event-Dots + "Kommende Termine" live (Ticket 0008)
+    });
+    // Abwesenheiten live: rooms/{room}/availability/{memberId}/{YYYY-MM-DD} = true (Ticket 0008)
+    onValue(ref(db, `rooms/${room}/availability`), snap => {
+      availabilityCache = snap.val() || {};
+      renderCalendar();
+    });
+  }
+
+  /* ---- Raum-Code anzeigen + teilen (Ticket 0003) ---- */
+  function renderRoomCode(){
+    const el = $('rc-code');
+    if (el) el.textContent = state.room || urlRoom() || '––––––';
+  }
+  function inviteLink(){
+    const u = new URL(location.href);
+    u.searchParams.set('room', state.room || urlRoom());
+    return u.href;
+  }
+  let toastTimer = null;
+  function toast(msg){
+    const t = $('toast'); if (!t) return;
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+  async function shareRoom(){
+    if (!state.room) return;
+    const link = inviteLink();
+    // Mobile: native Teilen-Sheet. Desktop/ohne Web-Share: Link in die Zwischenablage.
+    if (navigator.share){
+      try { await navigator.share({ title: 'Crew', text: `Tritt meinem Crew-Raum bei (Code ${state.room}):`, url: link }); return; }
+      catch(e){ if (e && e.name === 'AbortError') return; }   // Nutzer hat abgebrochen
+    }
+    try { await navigator.clipboard.writeText(link); toast('Einladungs-Link kopiert'); }
+    catch(e){ toast(link); }                                   // letzter Fallback: Link anzeigen
+  }
+  if (DEBUG) window.__cp.inviteLink = inviteLink;               // Test-Beleg (nur localhost)
+
+  /* ---- Event-Uebersicht aus echten Daten ---- */
+  const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+  const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  // Ort -> Google-Maps-Link (Ticket 0006). Key-frei, rein clientseitig.
+  // href via encodeURIComponent (URL-Encoding) + esc (Attribut-Schutz); Anzeige = Ort-Name via esc.
+  function mapsHref(loc){ return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc); }
+  function mapsAnchor(rawLoc){
+    return `<a class="maps-link" href="${esc(mapsHref(rawLoc))}" target="_blank" rel="noopener noreferrer">${esc(rawLoc)}</a>`;
+  }
+  const badgeTextHome = { plan:'In Planung', live:'Läuft', past:'Vorbei' };
+
+  // Auto-Status (Ticket 0007). VORRANG-REGEL: Der manuell gesetzte `status` ist die
+  // Basis. autoStatusDate/autoStatusTo schieben den Status NUR VORWAERTS
+  // (plan -> live -> past), sobald heute >= autoStatusDate (gleiche Datum-Logik wie
+  // daysUntil -> konsistent mit dem Countdown, keine Zeitzonen-Drift). Nie rueckwaerts:
+  // ist der manuelle Status bereits >= dem Auto-Ziel, bleibt der manuelle -> kein Flackern.
+  const STATUS_ORDER = { plan:0, live:1, past:2 };
+  function effectiveStatus(ev){
+    const base = ['plan','live','past'].includes(ev.status) ? ev.status : 'plan';
+    const to = ev.autoStatusTo;
+    if (ev.autoStatusDate && ['live','past'].includes(to) && STATUS_ORDER[to] > STATUS_ORDER[base]){
+      const du = daysUntil(ev.autoStatusDate);
+      if (du !== null && du <= 0) return to;   // heute oder in der Vergangenheit -> Ziel
+    }
+    return base;
+  }
+
+  function avatarsHTML(members, max){
+    const arr = Object.values(members);
+    let h = arr.slice(0, max).map(m =>
+      `<div class="avatar" style="background:#${safeColor(m.color)}">${esc(initials(m.name))}</div>`).join('');
+    if (arr.length > max) h += `<div class="avatar more">+${arr.length-max}</div>`;
+    return h;
+  }
+  // initials() liefert nur Buchstaben, safeColor() nur Hex -> data-crew ist injektionsfrei
+  function crewAttr(members){
+    return Object.values(members).map(m => `${initials(m.name)}:${safeColor(m.color)}`).join(',');
+  }
+  // Countdown-Teile aus dem Startdatum (Card + Detail nutzen dieselbe Logik). Ticket 0008.
+  function countdownParts(ev){
+    let count = '—', clabel = '', cd = '';
+    if (ev.startDate){
+      const d = daysUntil(ev.startDate);
+      if (d === null){ /* unparsbar */ }
+      else if (d > 1){ count = d; clabel = "Tage bis los geht's"; cd = `<div class="countdown">in ${d} Tagen</div>`; }
+      else if (d === 1){ count = 1; clabel = "Tage bis los geht's"; cd = `<div class="countdown">morgen</div>`; }
+      else if (d === 0){ count = 0; clabel = "heute"; cd = `<div class="countdown">heute</div>`; }
+      else { count = '—'; clabel = "vorbei"; cd = `<div class="countdown muted">vorbei</div>`; }
+    }
+    return { count, clabel, cd };
+  }
+  function cardHTML(id, ev){
+    const status = effectiveStatus(ev);   // Auto-Status ggf. angewandt (Ticket 0007)
+    const name = esc(ev.name || 'Event');
+    const loc  = esc(ev.location || '');
+    const date = esc(ev.dateRange || '');
+    const going = Object.keys(membersCache).length;
+    const { count, clabel, cd } = countdownParts(ev);
+    const locHTML  = ev.location ? `${PIN}${mapsAnchor(ev.location)}` : '';   // kein Ort -> kein Pin/Link (T4)
+    const dateHTML = date ? `<span class="meta-date">${date}</span>` : '';
+    const metaInner = [locHTML, dateHTML].filter(Boolean).join('<span class="dot"></span>');
+    const deadline = ev.deadline
+      ? `<div class="card-deadline">${CLOCK} Zusagen noch bis <b>${esc(ev.deadline)}</b></div>` : '';
+    return `<article class="card"
+        data-id="${esc(id)}" data-title="${name}" data-loc="${loc}" data-date="${date}"
+        data-count="${count}" data-clabel="${esc(clabel)}" data-going="${going}" data-status="${status}"
+        data-deadline="${esc(ev.deadline||'')}" data-crew="${esc(crewAttr(membersCache))}">
+        <div class="card-status"><span class="badge ${status}"><span class="bdot"></span>${badgeTextHome[status]}</span></div>
+        <div class="card-top"><div class="card-title">${name}</div>${cd}</div>
+        <div class="meta">${metaInner}</div>
+        <div class="card-bottom">
+          <div class="avatars">${avatarsHTML(membersCache, 4)}</div>
+          <div class="going"><b>${going}</b> dabei</div>
+        </div>
+        ${deadline}
+      </article>`;
+  }
+  function emptyHTML(title, sub){
+    return `<div class="kalender-empty" style="min-height:46vh">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+      <div><b style="color:var(--label)">${esc(title)}</b><br>${esc(sub)}</div>
+    </div>`;
+  }
+  function renderEvents(events){
+    const all = Object.entries(events || {});
+    const urlaube = all.filter(([,e]) => (e.type || 'urlaub') === 'urlaub');
+    const treffen = all.filter(([,e]) => e.type === 'treffen');
+    lists.urlaube.innerHTML = urlaube.length
+      ? urlaube.map(([id,e]) => cardHTML(id,e)).join('')
+      : emptyHTML('Noch keine Urlaube geplant', 'Tippe auf +, um euren ersten Urlaub anzulegen.');
+    lists.treffen.innerHTML = treffen.length
+      ? treffen.map(([id,e]) => cardHTML(id,e)).join('')
+      : emptyHTML('Noch keine Treffen geplant', 'Tippe auf +, um euer erstes Treffen anzulegen.');
+    const activeBtn = document.querySelector('.seg-btn:not(.inactive)');
+    const tab = activeBtn ? activeBtn.dataset.tab : 'urlaube';
+    staggerIn(lists[tab]);
+  }
+
+  /* ---- Crew-Tab: "Alle Leute" live aus echten Raum-Mitgliedern (Ticket 0004) ---- */
+  // Bausteine wie bei den Card-Avataren: initials() liefert nur Buchstaben,
+  // safeColor() nur Hex, esc() escaped den Namen -> kein HTML/CSS-Injection.
+  function personHTML(m){
+    return `<div class="person">`
+      + `<div class="pav" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`
+      + `<div class="pname">${esc((m && m.name) || '')}</div></div>`;
+  }
+  function renderCrew(){
+    const grid = $('people-grid');
+    if (!grid) return;
+    const arr = Object.values(membersCache || {});
+    grid.innerHTML = arr.length
+      ? arr.map(personHTML).join('')
+      : `<div class="people-empty">Noch niemand im Raum</div>`;
+  }
+
+  const $ = id => document.getElementById(id);
+  const indicator = $('indicator');
+  const segBtns = document.querySelectorAll('.seg-btn');
+  const lists = { urlaube: $('urlaube'), treffen: $('treffen') };
+
+  function staggerIn(list) {
+    list.querySelectorAll('.card').forEach((c, i) => {
+      c.classList.remove('in'); void c.offsetWidth;
+      setTimeout(() => c.classList.add('in'), 40 + i * 70);
+    });
+  }
+  function switchTab(tab, idx) {
+    indicator.style.transform = `translateX(${idx * 100}%)`;
+    segBtns.forEach((b, i) => b.classList.toggle('inactive', i !== idx));
+    Object.entries(lists).forEach(([k, el]) => el.classList.toggle('hidden', k !== tab));
+    staggerIn(lists[tab]);
+  }
+  segBtns.forEach((btn, idx) => btn.addEventListener('click', () => switchTab(btn.dataset.tab, idx)));
+
+  const views = { events:$('view-events'), kalender:$('view-kalender'), crew:$('view-crew') };
+  const tabs = document.querySelectorAll('.tabbar .tab');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active')); t.classList.add('active');
+    const v = t.dataset.view;
+    Object.entries(views).forEach(([k, el]) => el.classList.toggle('hidden', k !== v));
+    if (v === 'crew') renderCrew();              // Fallback: bei Tab-Wechsel aus membersCache rendern (Ticket 0004)
+  }));
+
+  // detail from card (via data-*)
+  const detail = $('detail');
+  const badgeLabel = { plan:'In Planung', live:'Läuft gerade', past:'Vorbei' };
+  let currentDetailId = null;   // welches Event das offene Detail zeigt (Ticket 0007)
+
+  // Status-Pille im Detail markieren (zeigt den EFFEKTIVEN Status = inkl. Auto-Status)
+  function setStatusPills(status){
+    document.querySelectorAll('#d-statusctl .status-pill').forEach(b =>
+      b.classList.toggle('st-on', b.dataset.st === status));
+  }
+  // Badge + Pillen + RSVP-Block im Detail aus einem (effektiven) Status rendern
+  function renderDetailStatus(status, deadline){
+    $('d-badge').innerHTML = `<span class="badge ${status}"><span class="bdot"></span>${badgeLabel[status]}</span>`;
+    setStatusPills(status);
+    const rsvp = $('d-rsvp');
+    if (status === 'plan' && deadline){ rsvp.style.display = ''; $('d-deadline').textContent = deadline; }
+    else rsvp.style.display = 'none';
+  }
+  // Offenes Detail live nachziehen (eigene oder fremde Status-Aenderung, Auto-Status)
+  function refreshOpenDetail(){
+    if (!detail.classList.contains('open') || !currentDetailId) return;
+    const ev = lastEvents[currentDetailId]; if (!ev) return;
+    renderDetailStatus(effectiveStatus(ev), ev.deadline);
+  }
+
+  // Detail oeffnen (dynamische Cards -> via Delegation, s. Bootstrap)
+  function openDetail(d){
+    $('d-title').textContent = d.title;
+    $('d-loc').innerHTML = d.loc ? mapsAnchor(d.loc) : '';   // Ort als Maps-Link im Detail (T1)
+    $('d-date').textContent = d.date;
+    $('d-num').textContent = d.count;
+    $('d-clabel').textContent = d.clabel;
+    $('d-going').textContent = d.going;
+    currentDetailId = d.id || null;   // fuer die Status-Steuerung (Ticket 0007)
+
+    // full crew, no "+N"
+    $('d-avatars').innerHTML = (d.crew || '').split(',').filter(Boolean).map(p => {
+      const [ini, col] = p.split(':');
+      return `<div class="avatar" style="background:#${col}">${ini}</div>`;
+    }).join('');
+
+    // Badge, Status-Pillen und RSVP-Block aus dem (effektiven) Status der Card rendern.
+    // data-status der Card ist bereits der effektive Status (cardHTML -> effectiveStatus).
+    renderDetailStatus(d.status, d.deadline);
+
+    detail.scrollTop = 0; detail.classList.add('open');
+  }
+  // Event-Status im Detail aendern (Ticket 0007). Schreibt nur gueltige Werte nach
+  // rooms/{room}/events/{id}/status. Optimistisch: lokal mergen + sofort Card/Detail
+  // neu rendern -> Live-Update ohne Reload; der onValue-Listener reconciled danach.
+  async function setEventStatus(newStatus){
+    if (!['plan','live','past'].includes(newStatus)) return;   // nie ungueltige Werte schreiben
+    if (!state.room || !currentDetailId) return;               // ohne Raum/Event kein Schreiben
+    if (lastEvents[currentDetailId]) lastEvents[currentDetailId].status = newStatus;
+    renderEvents(lastEvents);     // Card-Badge sofort (Auto-Status ggf. weiterhin vorrangig)
+    refreshOpenDetail();          // Detail-Badge + Pillen sofort
+    try {
+      await set(ref(db, `rooms/${state.room}/events/${currentDetailId}/status`), newStatus);
+    } catch(e){ /* Schreibfehler -> der Live-Listener korrigiert auf den RTDB-Stand */ }
+  }
+  document.querySelectorAll('#d-statusctl .status-pill').forEach(b =>
+    b.addEventListener('click', () => setEventStatus(b.dataset.st)));
+
+  // Test-Belege (nur localhost/file://, wie window.__cp.inviteLink) -- Ticket 0006/0007
+  if (DEBUG) Object.assign(window.__cp, { renderEvents, cardHTML, openDetail, mapsHref, effectiveStatus, setEventStatus, refreshOpenDetail });
+
+  document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => { const s = $(el.dataset.open); s.scrollTop = 0; s.classList.add('open'); }));
+  document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => $(el.dataset.close).classList.remove('open')));
+
+  const sClasses = { yes:'on-yes', maybe:'on-maybe', no:'on-no' };
+  document.querySelectorAll('.status-pill').forEach(p => p.addEventListener('click', () => {
+    document.querySelectorAll('.status-pill').forEach(x => x.classList.remove('on-yes','on-maybe','on-no'));
+    p.classList.add(sClasses[p.dataset.s]);
+  }));
+
+  document.querySelectorAll('.opt-toggle').forEach(grp => grp.querySelectorAll('.tg').forEach(btn => btn.addEventListener('click', () => {
+    grp.querySelectorAll('.tg').forEach(b => b.classList.remove('on')); btn.classList.add('on');
+  })));
+
+  // Packliste: abhaken + Fortschritt
+  const pBox = $('packliste');
+  if (pBox) {
+    const items = pBox.querySelectorAll('.check-item');
+    const phCount = pBox.querySelector('.ph-count'), phFill = pBox.querySelector('.ph-fill');
+    const refresh = () => {
+      const done = pBox.querySelectorAll('.check-item.done').length;
+      phCount.innerHTML = `<b>${done}</b> von ${items.length} erledigt`;
+      phFill.style.width = (done / items.length * 100) + '%';
+    };
+    items.forEach(it => it.addEventListener('click', () => { it.classList.toggle('done'); refresh(); }));
+    refresh();
+  }
+
+  // Voting: Stimme setzen (Badge wandert mit)
+  document.querySelectorAll('.vote-opt').forEach(o => o.addEventListener('click', () => {
+    document.querySelectorAll('.vote-opt').forEach(x => {
+      x.classList.remove('voted');
+      const b = x.querySelector('.opt-vote-badge'); if (b) b.remove();
+    });
+    o.classList.add('voted');
+    const badge = document.createElement('div');
+    badge.className = 'opt-vote-badge';
+    badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> Deine Stimme';
+    o.querySelector('.opt-head').appendChild(badge);
+  }));
+
+  // create sheet
+  const sheet = $('sheet'), backdrop = $('backdrop');
+  const CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>';
+  const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
+  const moduleSets = {
+    urlaub: [['Termin-Findung',1],['Reiseplan',1],['Packliste',1],['Flug',1],['Kosten',1],['Voting',1],['Buchungen',1]],
+    treffen: [['Termin-Findung',1],['Voting',1],['Treffpunkt',1],['Kosten',0]]
+  };
+  function renderModules(type) {
+    const g = $('mt-group');
+    g.innerHTML = moduleSets[type].map(([name,on]) =>
+      `<div class="mt-row"><div class="mt-label">${esc(name)}</div><div class="switch${on?' on':''}"></div></div>`).join('');
+    g.querySelectorAll('.switch').forEach(s => s.addEventListener('click', () => s.classList.toggle('on')));
+  }
+  document.querySelectorAll('.type-card').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('.type-card').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+    renderModules(c.dataset.type);
+  }));
+  renderModules('urlaub');
+
+  const dsw = $('dl-switch'), drow = $('dl-row');
+  dsw.addEventListener('click', () => {
+    dsw.classList.toggle('on');
+    drow.style.display = dsw.classList.contains('on') ? '' : 'none';
+  });
+
+  // ---- Einzeldatum-Picker (Frist + Auto-Status, Ticket 0007) ----
+  // Gleiche Optik wie der Zeitraum-Picker, aber genau EIN Tag. Liefert per onPick
+  // { iso, text } zurueck; ISO fuer die Logik, text als Anzeige-String.
+  const sdState = { year: 2026, month: 6, sel: null, onPick: null };   // sel = {y,m,d}
+  function sdParseISO(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? { y:+m[1], m:+m[2]-1, d:+m[3] } : null;
+  }
+  function sdISO(){
+    const s = sdState.sel;
+    return s ? `${s.y}-${String(s.m+1).padStart(2,'0')}-${String(s.d).padStart(2,'0')}` : '';
+  }
+  function sdText(){
+    const s = sdState.sel;
+    return s ? `${s.d}. ${MONTHS_DE[s.m]}` : '';
+  }
+  function renderSingleDate(){
+    const grid = $('sd-grid'); if (!grid) return;
+    const startDow = (new Date(sdState.year, sdState.month, 1).getDay() + 6) % 7; // Mo=0
+    const days = new Date(sdState.year, sdState.month+1, 0).getDate();
+    const s = sdState.sel;
+    let h = '';
+    for (let i=0;i<startDow;i++) h += '<div class="cal-day muted"></div>';
+    for (let d=1; d<=days; d++){
+      let cls = 'cal-day dp-day';
+      if (s && s.y === sdState.year && s.m === sdState.month && s.d === d) cls += ' solo';
+      h += `<div class="${cls}" data-day="${d}">${d}</div>`;
+    }
+    grid.innerHTML = h;
+    const cm = document.querySelector('#sdpick .cal-month');
+    if (cm) cm.textContent = `${MONTHS_DE[sdState.month]} ${sdState.year}`;
+    const sum = document.querySelector('#sdpick .dp-summary');
+    if (sum) sum.textContent = s ? sdText() : 'Tag wählen';
+  }
+  function openSingleDate(opts){
+    const sel = sdParseISO(opts.iso);
+    sdState.sel = sel;
+    sdState.year = sel ? sel.y : 2026;
+    sdState.month = sel ? sel.m : 6;
+    sdState.onPick = opts.onPick || null;
+    const t = $('sdpick-title'); if (t) t.textContent = opts.title || 'Datum wählen';
+    renderSingleDate();
+    const sc = $('sdpick'); sc.scrollTop = 0; sc.classList.add('open');
+  }
+  $('sd-grid').addEventListener('click', e => {
+    const cell = e.target.closest('.dp-day'); if (!cell || !cell.dataset.day) return;
+    sdState.sel = { y: sdState.year, m: sdState.month, d: +cell.dataset.day };
+    renderSingleDate();
+    if (sdState.onPick) sdState.onPick({ iso: sdISO(), text: sdText() });
+  });
+  function sdShiftMonth(delta){
+    let m = sdState.month + delta, y = sdState.year;
+    if (m < 0){ m = 11; y--; } else if (m > 11){ m = 0; y++; }
+    sdState.month = m; sdState.year = y;   // Auswahl bleibt; Markierung zeigt nur im passenden Monat
+    renderSingleDate();
+  }
+  const sdNav = document.querySelectorAll('#sdpick .cal-nav button');
+  if (sdNav[0]) sdNav[0].addEventListener('click', () => sdShiftMonth(-1));
+  if (sdNav[1]) sdNav[1].addEventListener('click', () => sdShiftMonth(1));
+
+  // ---- Create-Sheet: Frist + Auto-Status (ISO + Anzeige) ----
+  const crState = { deadlineISO:'', deadlineText:'', asISO:'', asText:'', asTo:'live' };
+  // Frist-Zeile oeffnet den Einzeldatum-Picker
+  drow.addEventListener('click', () => openSingleDate({
+    title: 'Frist bis',
+    iso: crState.deadlineISO,
+    onPick: ({ iso, text }) => {
+      crState.deadlineISO = iso; crState.deadlineText = text;
+      $('cr-deadline').innerHTML = (text ? esc(text) + ' ' : 'Datum wählen ') + CHEVRON;
+    }
+  }));
+  // Auto-Status: Switch zeigt Datum- + Ziel-Zeile
+  const asw = $('as-switch'), asDateRow = $('as-date-row'), asToRow = $('as-to-row');
+  asw.addEventListener('click', () => {
+    asw.classList.toggle('on');
+    const on = asw.classList.contains('on');
+    asDateRow.style.display = on ? '' : 'none';
+    asToRow.style.display = on ? '' : 'none';
+  });
+  asDateRow.addEventListener('click', () => openSingleDate({
+    title: 'Auto-Status ab',
+    iso: crState.asISO,
+    onPick: ({ iso, text }) => {
+      crState.asISO = iso; crState.asText = text;
+      $('cr-asdate').innerHTML = (text ? esc(text) + ' ' : 'Datum wählen ') + CHEVRON;
+    }
+  }));
+  // Ziel-Status togglet zwischen Laeuft und Vorbei (Auto schiebt nur vorwaerts)
+  const asTo = $('cr-asto');
+  asTo.addEventListener('click', () => {
+    const next = asTo.dataset.to === 'live' ? 'past' : 'live';
+    asTo.dataset.to = next; crState.asTo = next;
+    asTo.innerHTML = (next === 'live' ? 'Läuft ' : 'Vorbei ') + CHEVRON;
+  });
+
+  // ---- Datepicker (Zeitraum): interaktiver Bereichs-Picker, ein Monat ----
+  const dpState = { year: 2026, month: 6, start: null, end: null };
+  function dpRange() {
+    if (!dpState.start) return null;
+    const a = dpState.start, b = dpState.end || dpState.start;
+    return { lo: Math.min(a,b), hi: Math.max(a,b) };
+  }
+  function dpISO(day) {
+    return `${dpState.year}-${String(dpState.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  function dpRangeText() {
+    const r = dpRange(); if (!r) return '';
+    const mn = MONTHS_DE[dpState.month];
+    return r.lo === r.hi ? `${r.lo}. ${mn}` : `${r.lo}. – ${r.hi}. ${mn}`;
+  }
+  function renderDatepick() {
+    const grid = $('dp-grid'); if (!grid) return;
+    const startDow = (new Date(dpState.year, dpState.month, 1).getDay() + 6) % 7; // Mo=0
+    const days = new Date(dpState.year, dpState.month+1, 0).getDate();
+    const r = dpRange();
+    let h = '';
+    for (let i=0;i<startDow;i++) h += '<div class="cal-day muted"></div>';
+    for (let d=1; d<=days; d++) {
+      let cls = 'cal-day dp-day';
+      if (r) {
+        if (r.lo === r.hi && d === r.lo) cls += ' solo';
+        else if (d === r.lo) cls += ' start';
+        else if (d === r.hi) cls += ' end';
+        else if (d > r.lo && d < r.hi) cls += ' between';
+      }
+      h += `<div class="${cls}" data-day="${d}">${d}</div>`;
+    }
+    grid.innerHTML = h;
+    const cm = document.querySelector('#datepick .cal-month');
+    if (cm) cm.textContent = `${MONTHS_DE[dpState.month]} ${dpState.year}`;
+    const sum = document.querySelector('#datepick .dp-summary');
+    if (sum) sum.textContent = r
+      ? (r.hi > r.lo ? `${r.lo}. – ${r.hi}. ${MONTHS_DE[dpState.month]} · ${r.hi-r.lo+1} Tage`
+                     : `${r.lo}. ${MONTHS_DE[dpState.month]}`)
+      : 'Zeitraum wählen';
+    const fld = $('cr-daterange');
+    if (fld) fld.innerHTML = (r ? esc(dpRangeText()) + ' ' : 'Datum wählen ') + CHEVRON;
+  }
+  $('dp-grid').addEventListener('click', e => {
+    const cell = e.target.closest('.dp-day'); if (!cell || !cell.dataset.day) return;
+    const day = +cell.dataset.day;
+    if (!dpState.start || dpState.end) { dpState.start = day; dpState.end = null; } // (neu) Start
+    else { dpState.end = day; }                                                     // Ende
+    renderDatepick();
+  });
+  function shiftMonth(delta) {
+    let m = dpState.month + delta, y = dpState.year;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    dpState.month = m; dpState.year = y; dpState.start = null; dpState.end = null;   // Auswahl je Monat
+    renderDatepick();
+  }
+  const dpNav = document.querySelectorAll('#datepick .cal-nav button');
+  if (dpNav[0]) dpNav[0].addEventListener('click', () => shiftMonth(-1));
+  if (dpNav[1]) dpNav[1].addEventListener('click', () => shiftMonth(1));
+
+  // ---- Sheet oeffnen/schliessen + Reset (jedes Oeffnen startet leer) ----
+  function resetSheet() {
+    $('cr-name').value = ''; $('cr-loc').value = ''; $('cr-desc').value = '';
+    $('cr-name').closest('.frow').classList.remove('invalid');
+    document.querySelectorAll('.type-card').forEach(x =>
+      x.classList.toggle('on', x.dataset.type === 'urlaub'));
+    renderModules('urlaub');
+    dpState.year = 2026; dpState.month = 6; dpState.start = null; dpState.end = null;
+    renderDatepick();
+    dsw.classList.add('on'); drow.style.display = '';
+    // Frist + Auto-Status zuruecksetzen (Ticket 0007)
+    crState.deadlineISO = ''; crState.deadlineText = '';
+    crState.asISO = ''; crState.asText = ''; crState.asTo = 'live';
+    $('cr-deadline').innerHTML = 'Datum wählen ' + CHEVRON;
+    $('cr-asdate').innerHTML = 'Datum wählen ' + CHEVRON;
+    asTo.dataset.to = 'live'; asTo.innerHTML = 'Läuft ' + CHEVRON;
+    asw.classList.remove('on'); asDateRow.style.display = 'none'; asToRow.style.display = 'none';
+  }
+  const openSheet = () => { resetSheet(); sheet.classList.add('open'); backdrop.classList.add('open'); };
+  const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); };
+  document.querySelector('.add-btn').addEventListener('click', openSheet);
+  backdrop.addEventListener('click', closeSheet);
+  document.querySelectorAll('[data-close-sheet]').forEach(b => b.addEventListener('click', closeSheet));
+
+  // ---- "Erstellen": neues Event nach RTDB schreiben ----
+  let creating = false;
+  async function createEvent() {
+    if (creating) return;                                  // Doppel-Submit abfangen
+    const name = $('cr-name').value.trim();
+    const typeCard = document.querySelector('.type-card.on');
+    const type = (typeCard && typeCard.dataset.type === 'treffen') ? 'treffen' : 'urlaub';
+    // Pflichtfeld-Minimum: Name. (Typ hat immer einen Default.) Ohne Name kein Schreiben.
+    if (!name) {
+      const frow = $('cr-name').closest('.frow');
+      frow.classList.remove('invalid'); void frow.offsetWidth; frow.classList.add('invalid');
+      $('cr-name').focus();
+      return;
+    }
+    if (!state.room || !state.memberId) return;            // ohne Raum/Member kein Schreiben
+    // Modul-Toggles je Typ auslesen
+    const modules = {};
+    document.querySelectorAll('#mt-group .mt-row').forEach(row => {
+      const label = row.querySelector('.mt-label').textContent.trim();
+      // Modul-Name wird als RTDB-Key geschrieben -> Firebase-verbotene Zeichen
+      // (. $ # [ ] /) ausschliessen. Aktuelle Modulnamen sind alle sauber.
+      if (label && !/[.$#\[\]/]/.test(label)) modules[label] = row.querySelector('.switch').classList.contains('on');
+    });
+    const ev = {
+      type,
+      name,
+      location: $('cr-loc').value.trim(),
+      dateRange: dpRangeText(),
+      status: 'plan',                                       // neue Events starten in Planung
+      description: $('cr-desc').value.trim(),
+      modules,
+      participants: { [state.memberId]: true },            // vorerst nur Ersteller (Auswahl -> P6)
+      createdBy: state.memberId,
+      createdAt: serverTimestamp()
+    };
+    const r = dpRange();
+    if (r) ev.startDate = dpISO(r.lo);                      // ISO-Start fuer Countdown
+    // Frist: nur wenn Switch an UND ein Datum gewaehlt -> Anzeige-String + ISO (Ticket 0007)
+    if (dsw.classList.contains('on') && crState.deadlineISO) {
+      ev.deadline = crState.deadlineText;                  // Anzeige-String (Card/Detail)
+      ev.deadlineISO = crState.deadlineISO;                // ISO fuer die Logik
+    }
+    // Auto-Status: nur wenn Switch an UND Datum gewaehlt -> ISO + Ziel-Status (Ticket 0007)
+    if (asw.classList.contains('on') && crState.asISO) {
+      ev.autoStatusDate = crState.asISO;                   // ab diesem Tag
+      ev.autoStatusTo = crState.asTo;                      // Ziel-Status (live|past)
+    }
+    creating = true; $('sheet-create-btn').disabled = true;
+    try {
+      const evRef = push(ref(db, `rooms/${state.room}/events`));
+      await set(evRef, ev);
+      closeSheet();
+      // direkt zum passenden Tab, damit das neue Event sichtbar ist
+      switchTab(type === 'treffen' ? 'treffen' : 'urlaube', type === 'treffen' ? 1 : 0);
+    } finally {
+      creating = false; $('sheet-create-btn').disabled = false;
+    }
+  }
+  $('sheet-create-btn').addEventListener('click', createEvent);
+
+  /* ===== Kalender-Tab: klickbare Tage + Abwesenheit + echte Termine (Ticket 0008) ===== */
+  const MONTHS_ABBR = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const EV_COLOR = { treffen:'#FF9F0A', urlaub:'#5E5CE6' };
+  // Datum-Key NUR aus Zahlen gebaut -> immer YYYY-MM-DD, kein Firebase-verbotenes
+  // Zeichen (. $ # [ ] /). memberId ist ein push-Key -> ebenfalls sauber. Keine Injection.
+  function calISO(day){
+    return `${calState.year}-${String(calState.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  function memberAvail(memberId){ return (availabilityCache && availabilityCache[memberId]) || {}; }
+
+  function renderCalendar(){
+    const grid = $('cal-grid'); if (!grid) return;
+    const cm = document.querySelector('#view-kalender .cal-month');
+    if (cm) cm.textContent = `${MONTHS_DE[calState.month]} ${calState.year}`;
+
+    // Event-Dots dieses Monats: Tag -> Farbe (Typ); erstes Event am Tag gewinnt
+    const eventDots = {};
+    Object.values(lastEvents || {}).forEach(ev => {
+      const m = ev && ev.startDate && /^(\d{4})-(\d{2})-(\d{2})$/.exec(ev.startDate);
+      if (m && +m[1] === calState.year && (+m[2]-1) === calState.month){
+        const day = +m[3];
+        if (!eventDots[day]) eventDots[day] = EV_COLOR[ev.type] || EV_COLOR.urlaub;
+      }
+    });
+
+    const now = new Date();
+    const isThisMonth = (calState.year === now.getFullYear() && calState.month === now.getMonth());
+    const todayD = now.getDate();
+    const myId = state.memberId;
+    const myAvail = memberAvail(myId);
+
+    const first = new Date(calState.year, calState.month, 1);
+    const startDow = (first.getDay() + 6) % 7;                 // Mo = 0
+    const days = new Date(calState.year, calState.month + 1, 0).getDate();
+    let h = '';
+    for (let i = 0; i < startDow; i++) h += '<div class="cal-day muted"></div>';
+    for (let d = 1; d <= days; d++){
+      const iso = calISO(d);
+      let cls = 'cal-day';
+      if (isThisMonth && d === todayD) cls += ' today';
+      // fremde Abwesenheit: irgendein ANDERES Mitglied an diesem Tag abwesend
+      let other = false;
+      for (const mid in availabilityCache){
+        if (mid === myId) continue;
+        if (availabilityCache[mid] && availabilityCache[mid][iso]){ other = true; break; }
+      }
+      if (myAvail[iso]) cls += ' av-me';                       // eigene Abwesenheit
+      if (other) cls += ' av-other';                          // fremde Abwesenheit
+      const dot = eventDots[d] ? `<span class="dot" style="background:${eventDots[d]}"></span>` : '';
+      h += `<div class="${cls}" data-day="${d}">${d}${dot}</div>`;
+    }
+    grid.innerHTML = h;
+    renderUpcoming();
+  }
+
+  // "Kommende Termine" aus echten Events: nur kommende (heute + Zukunft), nach Startdatum sortiert
+  function renderUpcoming(){
+    const box = $('cal-upcoming'); if (!box) return;
+    const items = Object.entries(lastEvents || {})
+      .filter(([,e]) => e && /^\d{4}-\d{2}-\d{2}$/.test(e.startDate || ''))
+      .map(([id,e]) => ({ id, e, du: daysUntil(e.startDate) }))
+      .filter(x => x.du !== null && x.du >= 0)
+      .sort((a,b) => a.e.startDate < b.e.startDate ? -1 : (a.e.startDate > b.e.startDate ? 1 : 0));
+    if (!items.length){ box.innerHTML = `<div class="file-empty">Keine kommenden Termine</div>`; return; }
+    box.innerHTML = items.map(({id,e}) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(e.startDate);
+      const day = +m[3], mon = MONTHS_ABBR[+m[2]-1] || '';
+      const color = EV_COLOR[e.type] || EV_COLOR.urlaub;
+      const sub = [esc(e.dateRange || ''), e.type === 'treffen' ? 'Treffen' : 'Urlaub'].filter(Boolean).join(' · ');
+      return `<div class="file-row" data-id="${esc(id)}">
+        <div class="ce-date"><div class="ce-d">${day}</div><div class="ce-m">${esc(mon)}</div></div>
+        <div class="file-body"><div class="file-name">${esc(e.name || 'Event')}</div><div class="file-sub">${sub}</div></div>
+        <div class="ce-dot" style="background:${color}"></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Termin-Zeile -> Detail (gleicher Datensatz, den cardHTML in die data-* schreibt)
+  function openEventById(id){
+    const e = lastEvents[id]; if (!e) return;
+    const { count, clabel } = countdownParts(e);
+    openDetail({
+      id, title: e.name || 'Event', loc: e.location || '', date: e.dateRange || '',
+      count: String(count), clabel, going: String(Object.keys(membersCache).length),
+      crew: crewAttr(membersCache), status: effectiveStatus(e), deadline: e.deadline || ''
+    });
+  }
+
+  // Tag-Klick toggelt die EIGENE Abwesenheit; optimistisch lokal, Listener reconciled.
+  async function toggleAvailability(day){
+    if (!state.room || !state.memberId){ toast('Erst einem Raum beitreten'); return; }
+    const iso = calISO(day);
+    const currently = !!memberAvail(state.memberId)[iso];
+    if (!availabilityCache[state.memberId]) availabilityCache[state.memberId] = {};
+    if (currently) delete availabilityCache[state.memberId][iso];
+    else availabilityCache[state.memberId][iso] = true;
+    renderCalendar();
+    const path = `rooms/${state.room}/availability/${state.memberId}/${iso}`;
+    try {
+      if (currently) await remove(ref(db, path));
+      else await set(ref(db, path), true);
+    } catch(e){ /* Schreibfehler -> Live-Listener korrigiert auf den RTDB-Stand */ }
+  }
+  function calShiftMonth(delta){
+    let m = calState.month + delta, y = calState.year;
+    if (m < 0){ m = 11; y--; } else if (m > 11){ m = 0; y++; }
+    calState.month = m; calState.year = y;
+    renderCalendar();
+  }
+
+  // Wiring: je EIN Listener (keine Doppel-Register), Tag-Klick via Delegation
+  $('cal-grid').addEventListener('click', e => {
+    const cell = e.target.closest('.cal-day');
+    if (!cell || cell.classList.contains('muted') || !cell.dataset.day) return;
+    toggleAvailability(+cell.dataset.day);
+  });
+  $('cal-upcoming').addEventListener('click', e => {
+    const row = e.target.closest('.file-row');
+    if (row && row.dataset.id) openEventById(row.dataset.id);
+  });
+  const calNav = document.querySelectorAll('#view-kalender .cal-nav button');
+  if (calNav[0]) calNav[0].addEventListener('click', () => calShiftMonth(-1));
+  if (calNav[1]) calNav[1].addEventListener('click', () => calShiftMonth(1));
+
+  renderDatepick();
+  renderCalendar();   // Kalender-Tab initial rendern (leer bis Live-Daten kommen)
+  if (DEBUG) Object.assign(window.__cp, {                       // Test-Belege (nur localhost)
+    renderCalendar, renderUpcoming, toggleAvailability, calShiftMonth, openEventById,
+    calState, getAvail: () => availabilityCache
+  });
+
+  // Gruppen-Picker (Einfachauswahl) + Mitglieder (Mehrfach)
+  document.querySelectorAll('.pick-grp').forEach(r => r.addEventListener('click', () => {
+    document.querySelectorAll('.pick-grp').forEach(x => x.classList.remove('sel')); r.classList.add('sel');
+  }));
+  document.querySelectorAll('.pick-mem').forEach(r => r.addEventListener('click', () => r.classList.toggle('sel')));
+
+  /* ===== Bootstrap: Onboarding + Live-Daten ===== */
+  // Mock-Cards aus dem Prototyp entfernen -- Uebersicht kommt aus RTDB
+  lists.urlaube.innerHTML = '';
+  lists.treffen.innerHTML = '';
+
+  // dynamische Cards -> Detail via Event-Delegation
+  Object.values(lists).forEach(el => el.addEventListener('click', e => {
+    if (e.target.closest('a')) return;        // Ort-Maps-Link oeffnet Maps, NICHT das Detail (T2)
+    const card = e.target.closest('.card');
+    if (card) openDetail(card.dataset);
+  }));
+
+  // Onboarding-Wiring
+  $('ob-newroom').addEventListener('click', () => { $('ob-room').value = genRoomCode(); });
+  $('ob-join').addEventListener('click', join);
+  $('ob-room').addEventListener('keydown', e => { if (e.key === 'Enter') $('ob-name').focus(); });
+  $('ob-name').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
+  $('rc-share').addEventListener('click', shareRoom);   // Raum teilen (Ticket 0003)
+
+  /* ---- Init: Reload-Persistenz (Ticket 0003) ----
+     ?room=CODE in URL + gespeicherter Name -> Auto-Rejoin ohne Onboarding.
+     join() reuse't die memberId aus sessionStorage -> kein Member-Duplikat.
+     Kein Name / Storage-Block / Fehler -> Onboarding (Name ggf. vorbefuellt). */
+  function init(){
+    const r = urlRoom();
+    const savedName = loadName();
+    if (r && savedName){
+      $('ob-name').value = savedName;
+      $('onboarding').classList.remove('open');     // sofort ausblenden -> kein Flash
+      join().catch(() => showOnboarding());         // Fehler -> zurueck ins Onboarding
+    } else {
+      showOnboarding();
+      if (savedName) $('ob-name').value = savedName; // Teil-Linderung: letzten Namen vorbefuellen
+    }
+  }
+  init();
+</script>
+</body>
+</html>
