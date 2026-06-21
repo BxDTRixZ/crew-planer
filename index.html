@@ -88,7 +88,6 @@
   #detail { z-index:100; }
   #termin, #kosten, #reiseplan, #packliste, #voting, #flug, #buchungen, #treffpunkt { z-index:200; }
   #datepick, #grouppick, #sdpick { z-index:400; }
-  #groupedit { z-index:410; }
   .navbar { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; min-height:52px; background:rgba(0,0,0,0.55); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); }
   .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
   .nav-btn svg { width:20px; height:20px; }
@@ -256,9 +255,6 @@
   .group-count { font-size:14px; color:var(--label-2); font-weight:500; letter-spacing:-0.2px; }
   .group-card .avatars { margin-top:12px; }
   .group-card .avatar { border-color:var(--card); }
-  .create-group { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); margin-top:2px; }
-  .create-group:active { transform:scale(0.97); }
-  .create-group svg { width:18px; height:18px; }
   .people-grid { display:flex; flex-wrap:wrap; padding:4px 0; }
   .groups-empty { padding:18px; margin-bottom:12px; border:0.5px dashed var(--card-border); border-radius:var(--r-card); color:var(--label-2); font-size:14px; text-align:center; letter-spacing:-0.1px; }
   .people-empty { width:100%; padding:8px 4px; color:var(--label-2); font-size:14px; }
@@ -453,9 +449,10 @@
           </button>
         </div>
         <div class="section-label" style="padding:0 4px">Deine Gruppen</div>
-        <!-- Gruppen-Feature folgt spaeter (Ticket 0004: nur Empty-State, NICHT bauen) -->
+        <!-- Gruppen-Feature folgt spaeter (nur Empty-State, NICHT bauen). Der fruehere
+             "Gruppe erstellen"-Button oeffnete den Dummy-Crew-Screen (Fake-Leute) und
+             ist mit Ticket 0016 entfernt -- es gibt (noch) kein Gruppen-Feature. -->
         <div class="groups-empty" id="groups-empty">Noch keine Gruppen</div>
-        <button class="create-group" data-open="groupedit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Gruppe erstellen</button>
 
         <div class="section-label" style="padding:16px 4px 8px">Alle Leute</div>
         <!-- people-grid wird LIVE aus membersCache gerendert (renderCrew, Ticket 0004) -->
@@ -860,42 +857,16 @@
     <div class="bottom-pad"></div>
   </div>
 
-  <!-- GROUP PICKER -->
+  <!-- TEILNEHMER-PICKER: echte Raum-Mitglieder (Ticket 0016, ersetzt Dummy-Crew) -->
   <div class="screen" id="grouppick">
     <div class="navbar">
       <button class="nav-btn" data-close="grouppick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Zurück</button>
-      <div class="nav-mid">Gruppe wählen</div><div class="nav-spacer"></div>
+      <div class="nav-mid">Wer ist dabei?</div><div class="nav-spacer"></div>
     </div>
-    <div class="section-label">Deine Gruppen</div>
-    <div class="fgroup">
-      <div class="pick-row pick-grp sel"><div class="pick-body"><div class="pick-name">Die Jungs</div><div class="pick-sub">Max, Jonas, Tim, Ben +2</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-grp"><div class="pick-body"><div class="pick-name">Familie</div><div class="pick-sub">Papa, Mama, Mia +2</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-grp"><div class="pick-body"><div class="pick-name">Arbeit</div><div class="pick-sub">Klaus, Dirk, Rita +5</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-    </div>
-    <button class="wide-action" data-open="groupedit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Neue Gruppe</button>
-    <div class="bottom-pad"></div>
-  </div>
-
-  <!-- GROUP EDIT -->
-  <div class="screen" id="groupedit">
-    <div class="navbar">
-      <button class="nav-cancel" data-close="groupedit">Abbrechen</button>
-      <div class="nav-mid">Neue Gruppe</div>
-      <button class="nav-done" data-close="groupedit">Sichern</button>
-    </div>
-    <div class="section-label">Name</div>
-    <div class="fgroup"><div class="frow"><input placeholder="z.B. Festival-Crew"></div></div>
-    <div class="section-label">Mitglieder</div>
-    <div class="fgroup">
-      <div class="pick-row pick-mem has-av sel"><div class="pav-sm" style="background:#FF9500">MK</div><div class="pick-body"><div class="pick-name">Max</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av sel"><div class="pav-sm" style="background:#34C759">JL</div><div class="pick-body"><div class="pick-name">Jonas</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#FF2D55">TS</div><div class="pick-body"><div class="pick-name">Tim</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#00C7BE">BN</div><div class="pick-body"><div class="pick-name">Ben</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#AF52DE">LM</div><div class="pick-body"><div class="pick-name">Leon</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#007AFF">FH</div><div class="pick-body"><div class="pick-name">Finn</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#5E5CE6">LH</div><div class="pick-body"><div class="pick-name">Lukas</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-      <div class="pick-row pick-mem has-av"><div class="pav-sm" style="background:#FF9F0A">JK</div><div class="pick-body"><div class="pick-name">Jan</div></div><div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>
-    </div>
+    <div class="section-label">Mitglieder im Raum</div>
+    <!-- pp-list wird LIVE aus membersCache gerendert (renderParticipantPicker, Ticket 0016).
+         Mehrfach-Auswahl; keine Fake-Gruppen/Fake-Leute mehr. -->
+    <div class="fgroup" id="pp-list"></div>
     <div class="bottom-pad"></div>
   </div>
 
@@ -931,15 +902,10 @@
 
       <div class="flabel">Wer ist dabei?</div>
       <div class="fgroup">
-        <div class="frow" data-open="grouppick"><label>Gruppe</label><span class="fvalue">Die Jungs <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
-        <div class="invited">
-          <div class="avatar" style="background:#FF9500">MK</div>
-          <div class="avatar" style="background:#34C759">JL</div>
-          <div class="avatar" style="background:#FF2D55">TS</div>
-          <div class="avatar" style="background:#00C7BE">BN</div>
-          <div class="avatar" style="background:#AF52DE">LM</div>
-          <div class="avatar" style="background:#007AFF">FH</div>
-          <button class="add-person"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
+        <div class="frow" data-open="grouppick"><label>Teilnehmer</label><span class="fvalue" id="cr-partsum">Alle <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+        <!-- cr-invited wird LIVE aus der Auswahl gerendert (renderInvited, Ticket 0016) -->
+        <div class="invited" id="cr-invited">
+          <button class="add-person" data-open="grouppick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
       </div>
       <div class="hint-line">Nur Eingeladene sehen dieses Event.</div>
@@ -1520,7 +1486,52 @@
   if (sdNav[1]) sdNav[1].addEventListener('click', () => sdShiftMonth(1));
 
   // ---- Create-Sheet: Frist + Auto-Status (ISO + Anzeige) ----
-  const crState = { deadlineISO:'', deadlineText:'', asISO:'', asText:'', asTo:'live' };
+  const crState = { deadlineISO:'', deadlineText:'', asISO:'', asText:'', asTo:'live', selected:new Set() };
+
+  /* ---- Teilnehmer-Picker: echte Members aus membersCache (Ticket 0016) ----
+     Ersetzt die fruehere Dummy-Crew (Fake-Gruppen + Fake-Leute). Bausteine wie bei
+     den Card-/Crew-Avataren: initials() nur Buchstaben, safeColor() nur Hex, esc()
+     escaped den Namen -> kein HTML/CSS-Injection. memberId steckt nur in data-mid
+     (esc-geschuetzt) und wird beim Schreiben gegen membersCache validiert. */
+  function partRowHTML(id, m){
+    const sel = crState.selected.has(id) ? ' sel' : '';
+    return `<div class="pick-row pick-mem has-av${sel}" data-mid="${esc(id)}">`
+      + `<div class="pav-sm" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`
+      + `<div class="pick-body"><div class="pick-name">${esc((m && m.name) || '')}</div></div>`
+      + `<div class="pick-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div></div>`;
+  }
+  function renderParticipantPicker(){
+    const box = $('pp-list'); if (!box) return;
+    const entries = Object.entries(membersCache || {});
+    box.innerHTML = entries.length
+      ? entries.map(([id, m]) => partRowHTML(id, m)).join('')
+      : `<div class="people-empty" style="padding:14px 16px">Noch niemand im Raum</div>`;
+  }
+  // Auswahl-Vorschau im Sheet: Avatare (vor dem statischen +-Button) + Zusammenfassung.
+  // Der +-Button bleibt ein STATISCHER DOM-Knoten (behaelt sein data-open-Binding).
+  function renderInvited(){
+    const box = $('cr-invited');
+    if (box){
+      box.querySelectorAll('.avatar').forEach(a => a.remove());
+      const btn = box.querySelector('.add-person');
+      const frag = document.createDocumentFragment();
+      Object.entries(membersCache || {}).filter(([id]) => crState.selected.has(id)).forEach(([id, m]) => {
+        const d = document.createElement('div');
+        d.className = 'avatar';
+        d.style.background = '#' + safeColor(m && m.color);
+        d.textContent = initials(m && m.name);   // textContent -> kein HTML-Injection
+        frag.appendChild(d);
+      });
+      box.insertBefore(frag, btn);
+    }
+    const sum = $('cr-partsum');
+    if (sum){
+      const total = Object.keys(membersCache || {}).length;
+      const n = Object.keys(membersCache || {}).filter(id => crState.selected.has(id)).length;
+      const label = n === 0 ? 'Niemand' : (n === total ? 'Alle' : `${n} ausgewählt`);
+      sum.innerHTML = esc(label) + ' ' + CHEVRON;
+    }
+  }
   // Frist-Zeile oeffnet den Einzeldatum-Picker
   drow.addEventListener('click', () => openSingleDate({
     title: 'Frist bis',
@@ -1631,6 +1642,9 @@
     $('cr-asdate').innerHTML = 'Datum wählen ' + CHEVRON;
     asTo.dataset.to = 'live'; asTo.innerHTML = 'Läuft ' + CHEVRON;
     asw.classList.remove('on'); asDateRow.style.display = 'none'; asToRow.style.display = 'none';
+    // Teilnehmer-Default: alle aktuellen Raum-Members vorausgewaehlt (Ticket 0016)
+    crState.selected = new Set(Object.keys(membersCache || {}));
+    renderInvited();
   }
   const openSheet = () => { resetSheet(); sheet.classList.add('open'); backdrop.classList.add('open'); };
   const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); };
@@ -1661,6 +1675,11 @@
       // (. $ # [ ] /) ausschliessen. Aktuelle Modulnamen sind alle sauber.
       if (label && !/[.$#\[\]/]/.test(label)) modules[label] = row.querySelector('.switch').classList.contains('on');
     });
+    // Teilnehmer: die im Picker gewaehlten ECHTEN Members (gegen membersCache
+    // validiert -> kein Fremd-Key), der Ersteller ist IMMER dabei (Ticket 0016).
+    const participants = {};
+    Object.keys(membersCache || {}).forEach(id => { if (crState.selected.has(id)) participants[id] = true; });
+    participants[state.memberId] = true;
     const ev = {
       type,
       name,
@@ -1669,7 +1688,7 @@
       status: 'plan',                                       // neue Events starten in Planung
       description: $('cr-desc').value.trim(),
       modules,
-      participants: { [state.memberId]: true },            // vorerst nur Ersteller (Auswahl -> P6)
+      participants,                                         // gewaehlte echte Members + Ersteller (Ticket 0016)
       createdBy: state.memberId,
       createdAt: serverTimestamp()
     };
@@ -1829,11 +1848,21 @@
     calState, getAvail: () => availabilityCache
   });
 
-  // Gruppen-Picker (Einfachauswahl) + Mitglieder (Mehrfach)
-  document.querySelectorAll('.pick-grp').forEach(r => r.addEventListener('click', () => {
-    document.querySelectorAll('.pick-grp').forEach(x => x.classList.remove('sel')); r.classList.add('sel');
-  }));
-  document.querySelectorAll('.pick-mem').forEach(r => r.addEventListener('click', () => r.classList.toggle('sel')));
+  // Teilnehmer-Picker (Ticket 0016): echte Members, Mehrfach-Auswahl.
+  // Beim Oeffnen (Frow "Teilnehmer" ODER +-Button, beide data-open="grouppick" und
+  // statisch) wird der Picker frisch aus membersCache gerendert; das Oeffnen selbst
+  // macht der generische [data-open]-Handler.
+  document.querySelectorAll('[data-open="grouppick"]').forEach(el =>
+    el.addEventListener('click', renderParticipantPicker));
+  // Auswahl via Delegation (Rows werden dynamisch gerendert): toggelt sel + Auswahl.
+  const ppList = $('pp-list');
+  if (ppList) ppList.addEventListener('click', e => {
+    const row = e.target.closest('.pick-row'); if (!row) return;
+    const id = row.dataset.mid; if (!id) return;
+    if (crState.selected.has(id)) crState.selected.delete(id); else crState.selected.add(id);
+    row.classList.toggle('sel', crState.selected.has(id));
+    renderInvited();
+  });
 
   /* ===== Bootstrap: Onboarding + Live-Daten ===== */
   // Mock-Cards aus dem Prototyp entfernen -- Uebersicht kommt aus RTDB
