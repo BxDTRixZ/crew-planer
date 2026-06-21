@@ -344,6 +344,28 @@
   .pack-assign-btn { display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:0; cursor:pointer; color:var(--label-2); font-size:13px; letter-spacing:-0.1px; align-self:flex-start; max-width:100%; }
   .pack-assign-btn .av-sm { margin-left:0; width:20px; height:20px; border-width:0; font-size:9px; }
   .pack-who { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Zuweisung + "bis wann" je Zeile nebeneinander (Ticket 0032, C) */
+  .pack-meta { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .pack-due-row { display:inline-flex; align-items:center; gap:5px; background:none; border:none; padding:0; cursor:pointer; color:var(--label-2); font-size:13px; letter-spacing:-0.1px; }
+  .pack-due-row.has-due { color:var(--accent-text); }
+  .pack-due-row svg { width:15px; height:15px; flex-shrink:0; }
+  /* Einzel-Item-Optionen: "bis wann" + Umschalter Mehrfach-Anlegen (Ticket 0032, C+D) */
+  .pack-add-opts { display:flex; align-items:center; gap:8px; margin:6px 18px 4px; }
+  .pack-add-spacer { flex:1; }
+  .pack-due-chip { display:inline-flex; align-items:center; gap:6px; background:var(--card-2); border:0.5px solid var(--card-border); border-radius:10px; color:var(--label-2); font-size:13px; font-weight:600; padding:7px 11px; cursor:pointer; }
+  .pack-due-chip.has-due { color:var(--accent-text); border-color:var(--accent); }
+  .pack-due-chip svg { width:15px; height:15px; flex-shrink:0; }
+  .pack-due-clear { width:28px; height:28px; border:none; background:var(--card-2); color:var(--label-2); border-radius:8px; cursor:pointer; font-size:18px; line-height:1; flex-shrink:0; }
+  .pack-multi-toggle { background:none; border:none; color:var(--accent-text); font-size:13px; font-weight:600; cursor:pointer; padding:7px 4px; }
+  /* Mehrfach-Anlegen (Ticket 0032, D) */
+  .pack-batch { margin:2px 18px 8px; display:flex; flex-direction:column; gap:8px; }
+  .pack-batch.hidden { display:none; }
+  .pack-batch-text { background:var(--card-2); border:0.5px solid var(--card-border); border-radius:12px; color:var(--label); font-size:15px; padding:11px 13px; outline:none; resize:vertical; min-height:88px; font-family:inherit; line-height:1.5; }
+  .pack-batch-text::placeholder { color:var(--label-2); }
+  .pack-batch-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .pack-batch-row .cp-select-wrap { flex:1; min-width:130px; }
+  .pack-batch-add { background:var(--green); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; padding:12px 0; cursor:pointer; }
+  .pack-batch-add:active { transform:scale(0.99); }
   .pack-del { flex-shrink:0; width:30px; height:30px; border:none; background:none; color:var(--label-2); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:8px; }
   .pack-del svg { width:17px; height:17px; }
   .pack-del:active { background:var(--card-2); }
@@ -366,10 +388,17 @@
   .besorg-ev span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .besorg-who { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--label-2); }
   .besorg-who .av-sm { margin-left:0; width:20px; height:20px; border-width:0; font-size:9px; }
-  /* Sortier-Control + Gruppierung (Ticket 0031) */
-  .besorg-sort { margin:4px 16px 8px; background:rgba(118,118,128,0.24); border-radius:var(--r-pill); padding:3px; display:flex; gap:2px; }
-  .bs-btn { flex:1; border:none; background:none; padding:8px 0; font-size:13px; font-weight:600; color:var(--label-2); cursor:pointer; border-radius:9px; letter-spacing:-0.2px; transition:color 0.2s ease, background 0.2s ease; }
-  .bs-btn.active { color:var(--label); background:#636366; box-shadow:0 2px 6px rgba(0,0,0,0.4); }
+  /* relevantes Datum pro Zeile (Ticket 0032, C): dueDate betont, Event-Datum dezent */
+  .besorg-due { display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:600; color:var(--label-2); }
+  .besorg-due.has-due { color:var(--accent); }
+  .besorg-due svg { flex-shrink:0; }
+  /* Sortier-Control (Ticket 0032, B): kompaktes Dropdown statt zweiter Pill-Reihe */
+  .besorg-sort { margin:4px 16px 10px; display:flex; align-items:center; gap:10px; }
+  .besorg-sort-label { font-size:13px; font-weight:600; color:var(--label-2); flex-shrink:0; }
+  /* wiederverwendbares App-Select (Sort 0032/B + Batch-Zuweisung 0032/D) */
+  .cp-select-wrap { position:relative; flex:1; min-width:0; }
+  .cp-select { width:100%; -webkit-appearance:none; appearance:none; background:var(--card-2); border:0.5px solid var(--card-border); border-radius:10px; color:var(--label); font-size:14px; font-weight:600; padding:9px 34px 9px 12px; cursor:pointer; outline:none; }
+  .cp-select-caret { position:absolute; right:11px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--label-2); pointer-events:none; }
   .besorg-groups { display:flex; flex-direction:column; gap:16px; }
   .besorg-grouplabel { margin:2px 0 -2px; padding:0 6px; }
   .besorg-ev.clickable { cursor:pointer; }
@@ -636,13 +665,21 @@
         <button class="bf-btn" type="button" data-bf="fueralle">Für alle</button>
         <button class="bf-btn" type="button" data-bf="alle">Alle</button>
       </div>
-      <!-- Sortier-Control (Ticket 0031): Default Events (gruppiert); Termin (frueheste
-           zuerst nach startDate); Wer bringt's (gruppiert nach Zuweisung). Rein
-           clientseitig auf der gefilterten Menge -> mit dem Filter (0030) kombiniert. -->
+      <!-- Sortier-Control (Ticket 0032): kompaktes Dropdown statt zweiter Pill-Reihe (B).
+           Events (Default, gruppiert) / Termin (frueheste zuerst nach dueDate, sonst
+           Event-Datum) / Wer bringt's (gruppiert nach Zuweisung). "Wer bringt's" ist nur
+           bei Filter Alle waehlbar (A) -- syncBesorgSortOptions blendet die Option sonst aus.
+           Rein clientseitig auf der gefilterten Menge -> mit dem Filter (0030) kombiniert. -->
       <div class="besorg-sort" id="besorg-sort">
-        <button class="bs-btn active" type="button" data-bs="events">Events</button>
-        <button class="bs-btn" type="button" data-bs="termin">Termin</button>
-        <button class="bs-btn" type="button" data-bs="wer">Wer bringt’s</button>
+        <span class="besorg-sort-label">Sortieren</span>
+        <div class="cp-select-wrap">
+          <select class="cp-select" id="besorg-sort-select" aria-label="Besorgliste sortieren">
+            <option value="events">Events</option>
+            <option value="termin">Termin</option>
+            <option value="wer" data-only-alle="1">Wer bringt’s</option>
+          </select>
+          <svg class="cp-select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
       </div>
       <main class="list" id="besorg-list-wrap">
         <div class="besorg-empty" id="besorg-empty" style="display:none"></div>
@@ -893,6 +930,27 @@
       <input type="text" id="pack-name" class="pack-in" placeholder="Was muss mit? (z. B. Zelt)" maxlength="80" autocomplete="off">
       <input type="text" id="pack-qty" class="pack-qty" placeholder="Menge" maxlength="24" autocomplete="off">
       <button type="button" id="pack-add-btn" class="pack-add-btn" aria-label="Hinzufügen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <!-- 0032 (C+D): optionales "bis wann" fuers Einzel-Item + Umschalter Mehrfach-Anlegen -->
+    <div class="pack-add-opts">
+      <button type="button" id="pack-due-btn" class="pack-due-chip" aria-label="Bis wann?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span id="pack-due-label">Bis wann?</span></button>
+      <button type="button" id="pack-due-clear" class="pack-due-clear" aria-label="Termin entfernen" hidden>×</button>
+      <span class="pack-add-spacer"></span>
+      <button type="button" id="pack-multi-toggle" class="pack-multi-toggle" aria-expanded="false">＋ Mehrere</button>
+    </div>
+    <!-- Mehrfach-Anlegen (0032/D): ein Teil pro Zeile, optional alle EINER Person zuweisen
+         + gemeinsames "bis wann". Leere/Whitespace-Zeilen werden ignoriert. -->
+    <div class="pack-batch hidden" id="pack-batch">
+      <textarea id="pack-batch-text" class="pack-batch-text" rows="4" placeholder="Ein Teil pro Zeile, z. B.&#10;Grill&#10;Kohle&#10;Anzünder"></textarea>
+      <div class="pack-batch-row">
+        <div class="cp-select-wrap">
+          <select id="pack-batch-assign" class="cp-select" aria-label="Alle zuweisen an"></select>
+          <svg class="cp-select-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <button type="button" id="pack-batch-due-btn" class="pack-due-chip" aria-label="Bis wann?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span id="pack-batch-due-label">Bis wann?</span></button>
+        <button type="button" id="pack-batch-due-clear" class="pack-due-clear" aria-label="Termin entfernen" hidden>×</button>
+      </div>
+      <button type="button" id="pack-batch-add" class="pack-batch-add">Alle hinzufügen</button>
     </div>
     <div class="fgroup" id="pack-list"></div>
     <div class="pack-empty" id="pack-empty">Noch nichts auf der Liste. Füge oben das erste Teil hinzu.</div>
@@ -1251,6 +1309,13 @@
 
   /* ---- Helfer ---- */
   function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  // ISO yyyy-mm-dd -> kompaktes Datum "5. Jul" (Ticket 0032, C). Rein string-basiert
+  // (kein Date-Objekt) -> keine UTC/lokal-Zeitzonen-Falle (wie 0023 defensiv).
+  const MON_ABBR_DE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  function fmtDayMon(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? (+m[3]) + '. ' + (MON_ABBR_DE[+m[2] - 1] || '') : '';
+  }
   function initials(name){
     const p = String(name||'').trim().split(/\s+/).filter(Boolean);
     if (!p.length) return '?';
@@ -1968,6 +2033,8 @@
   let packItems = {};            // letzter RTDB-Stand { itemId: {...} }
   let packEventId = null;        // Event, dessen Packliste gerade offen ist
   let packAssignTarget = null;   // itemId, fuer das der Zuweisungs-Picker offen ist
+  let packAddDue = '';           // dueDate (ISO) fuers naechste Einzel-Item (Ticket 0032, C)
+  let packBatchDue = '';         // gemeinsames dueDate (ISO) fuers Mehrfach-Anlegen (Ticket 0032, D)
 
   function packBaseRef(){
     return (state.room && packEventId)
@@ -1980,6 +2047,7 @@
   function openPackliste(){
     packEventId = currentDetailId;                     // an das offene Event koppeln (0007/0019)
     if (packUnsub){ packUnsub(); packUnsub = null; }   // evtl. altes Abo zuerst loesen
+    setPackAddDue(''); setPackBatchDue(''); closePackBatch();   // frischer Eingabe-Zustand (0032)
     const r = packBaseRef();
     if (!r){ packItems = {}; renderPackliste(); return; }
     packUnsub = onValue(r, snap => { packItems = snap.val() || {}; renderPackliste(); });
@@ -1988,6 +2056,7 @@
     if (packUnsub){ packUnsub(); packUnsub = null; }
     packEventId = null;
     closePackAssign();
+    closePackBatch();                                   // Mehrfach-Panel zu (0032)
   }
   // stabile Reihenfolge: nach createdAt, dann push-Key
   function packSortedIds(){
@@ -2038,6 +2107,10 @@
     }
     body.appendChild(nameRow);
 
+    // Meta-Zeile: Zuweisung + "bis wann" (Ticket 0032, C) nebeneinander.
+    const meta = document.createElement('div');
+    meta.className = 'pack-meta';
+
     // Zuweisung: Avatar+Name des Zugewiesenen ODER "fuer alle" (defensiv bei Ex-Mitglied)
     const assign = document.createElement('button');
     assign.type = 'button';
@@ -2055,7 +2128,25 @@
     }
     assign.appendChild(who);
     assign.addEventListener('click', () => openPackAssign(id));
-    body.appendChild(assign);
+    meta.appendChild(assign);
+
+    // "bis wann" (dueDate) anzeigen + bearbeiten: oeffnet den Einzeldatum-Picker (0007) und
+    // schreibt update(item, {dueDate}). Gesetztes Datum wird betont; sonst neutral "Termin".
+    const dueIso = isoDateOrNull(it.dueDate);
+    const due = document.createElement('button');
+    due.type = 'button';
+    due.className = 'pack-due-row' + (dueIso ? ' has-due' : '');
+    due.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+    const dueLab = document.createElement('span');
+    dueLab.textContent = dueIso ? ('bis ' + fmtDayMon(dueIso)) : 'Termin';   // textContent -> XSS-sicher
+    due.appendChild(dueLab);
+    due.addEventListener('click', () => openSingleDate({
+      title: 'Bis wann?', iso: dueIso || '',
+      onPick: ({ iso }) => setPackDue(id, iso)
+    }));
+    meta.appendChild(due);
+
+    body.appendChild(meta);
     row.appendChild(body);
 
     const del = document.createElement('button');
@@ -2075,10 +2166,85 @@
     const qty = (qtyEl ? qtyEl.value : '').trim();
     const item = { name, done:false, createdBy: state.uid || null, createdAt: serverTimestamp() };
     if (qty) item.qty = qty;                            // Menge optional
+    if (packAddDue) item.dueDate = packAddDue;          // optionales "bis wann" (Ticket 0032, C)
     if (nameEl) nameEl.value = '';
     if (qtyEl) qtyEl.value = '';
+    setPackAddDue('');                                  // Termin nach dem Anlegen zuruecksetzen
     try { await push(r, item); } catch(e){ /* Live-Listener reconciled */ }
     if (nameEl) nameEl.focus();
+  }
+  // dueDate eines bestehenden Items setzen/loeschen (Ticket 0032, C). null -> Feld entfernt.
+  async function setPackDue(id, iso){
+    const ir = packItemRef(id); if (!ir) return;
+    try { await update(ir, { dueDate: isoDateOrNull(iso) || null }); } catch(e){}
+  }
+  // Einzel-Anlege-Termin (Chip-Label + Clear-Button) spiegeln (Ticket 0032, C).
+  function setPackAddDue(iso){
+    packAddDue = isoDateOrNull(iso) || '';
+    const lab = $('pack-due-label'), clr = $('pack-due-clear'), btn = $('pack-due-btn');
+    if (lab) lab.textContent = packAddDue ? ('bis ' + fmtDayMon(packAddDue)) : 'Bis wann?';
+    if (btn) btn.classList.toggle('has-due', !!packAddDue);
+    if (clr) clr.hidden = !packAddDue;
+  }
+  // Gemeinsamer Batch-Termin (Ticket 0032, D).
+  function setPackBatchDue(iso){
+    packBatchDue = isoDateOrNull(iso) || '';
+    const lab = $('pack-batch-due-label'), clr = $('pack-batch-due-clear'), btn = $('pack-batch-due-btn');
+    if (lab) lab.textContent = packBatchDue ? ('bis ' + fmtDayMon(packBatchDue)) : 'Bis wann?';
+    if (btn) btn.classList.toggle('has-due', !!packBatchDue);
+    if (clr) clr.hidden = !packBatchDue;
+  }
+  // ---- Mehrfach-Anlegen (Ticket 0032, D): ein Teil pro Zeile, optional alle EINER Person ----
+  function fillBatchAssign(){
+    const sel = $('pack-batch-assign'); if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '';
+    const optAll = document.createElement('option');
+    optAll.value = ''; optAll.textContent = 'Für alle (offen)';   // Default: keine Zuweisung
+    sel.appendChild(optAll);
+    Object.keys(membersCache || {}).forEach(uid => {
+      const mm = membersCache[uid];
+      if (!mm || typeof mm !== 'object') return;
+      const o = document.createElement('option');
+      o.value = uid; o.textContent = mm.name || 'Mitglied';       // textContent -> XSS-sicher
+      sel.appendChild(o);
+    });
+    if (prev && Array.prototype.some.call(sel.options, o => o.value === prev)) sel.value = prev;
+  }
+  function openPackBatch(){
+    const panel = $('pack-batch'); if (!panel) return;
+    fillBatchAssign();
+    panel.classList.remove('hidden');
+    const tg = $('pack-multi-toggle'); if (tg){ tg.setAttribute('aria-expanded', 'true'); tg.textContent = '✕ Schließen'; }
+    const ta = $('pack-batch-text'); if (ta) ta.focus();
+  }
+  function closePackBatch(){
+    const panel = $('pack-batch'); if (!panel) return;
+    panel.classList.add('hidden');
+    const tg = $('pack-multi-toggle'); if (tg){ tg.setAttribute('aria-expanded', 'false'); tg.textContent = '＋ Mehrere'; }
+  }
+  function togglePackBatch(){
+    const panel = $('pack-batch'); if (!panel) return;
+    if (panel.classList.contains('hidden')) openPackBatch(); else closePackBatch();
+  }
+  async function addPackBatch(){
+    const r = packBaseRef(); if (!r) return;
+    const ta = $('pack-batch-text');
+    // ein Item pro Zeile; leere/Whitespace-Zeilen ignorieren -> keine leeren Items
+    const names = String(ta ? ta.value : '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (!names.length){ if (ta) ta.focus(); return; }
+    const sel = $('pack-batch-assign');
+    const assignee = (sel && sel.value) ? sel.value : null;     // "" -> fuer alle
+    const due = packBatchDue || null;
+    for (const nm of names){
+      const item = { name: nm.slice(0, 80), done:false, createdBy: state.uid || null, createdAt: serverTimestamp() };
+      if (assignee) item.assignee = assignee;                   // alle an EINE Person (D)
+      if (due) item.dueDate = due;                              // gemeinsames "bis wann" (optional)
+      try { await push(r, item); } catch(e){ /* Live-Listener reconciled */ }
+    }
+    if (ta) ta.value = '';
+    setPackBatchDue('');
+    closePackBatch();
   }
   async function togglePackDone(id){
     const ir = packItemRef(id); if (!ir) return;
@@ -2137,6 +2303,18 @@
     const addBtn = $('pack-add-btn'); if (addBtn) addBtn.addEventListener('click', addPackItem);
     const nameEl = $('pack-name'); if (nameEl) nameEl.addEventListener('keydown', e => { if (e.key === 'Enter') addPackItem(); });
     const qtyEl = $('pack-qty'); if (qtyEl) qtyEl.addEventListener('keydown', e => { if (e.key === 'Enter') addPackItem(); });
+    // 0032 (C): "bis wann" fuers Einzel-Item
+    const dueBtn = $('pack-due-btn');
+    if (dueBtn) dueBtn.addEventListener('click', () => openSingleDate({
+      title: 'Bis wann?', iso: packAddDue || '', onPick: ({ iso }) => setPackAddDue(iso) }));
+    const dueClear = $('pack-due-clear'); if (dueClear) dueClear.addEventListener('click', () => setPackAddDue(''));
+    // 0032 (D): Mehrfach-Anlegen
+    const multiTg = $('pack-multi-toggle'); if (multiTg) multiTg.addEventListener('click', togglePackBatch);
+    const batchDueBtn = $('pack-batch-due-btn');
+    if (batchDueBtn) batchDueBtn.addEventListener('click', () => openSingleDate({
+      title: 'Bis wann? (fuer alle)', iso: packBatchDue || '', onPick: ({ iso }) => setPackBatchDue(iso) }));
+    const batchDueClear = $('pack-batch-due-clear'); if (batchDueClear) batchDueClear.addEventListener('click', () => setPackBatchDue(''));
+    const batchAdd = $('pack-batch-add'); if (batchAdd) batchAdd.addEventListener('click', addPackBatch);
     if (packAssignOverlay){
       const cancel = $('pack-assign-cancel'); if (cancel) cancel.addEventListener('click', closePackAssign);
       packAssignOverlay.addEventListener('click', e => { if (e.target === packAssignOverlay) closePackAssign(); });
@@ -2222,9 +2400,9 @@
   // (Event-Anlage, dann Item-Anlage); die Gruppierungen bauen stabil darauf auf.
   function besorgSections(items){
     if (besorgSort === 'termin'){
-      // ES-stabile Sortierung: gleiche startDate behaelt die collectOpenItems-Ordnung.
+      // ES-stabile Sortierung: gleicher Termin-Key behaelt die collectOpenItems-Ordnung.
       const sorted = items.slice().sort((a, b) => {
-        const sa = eventStartKey(a.eventId), sb = eventStartKey(b.eventId);
+        const sa = besorgTerminKey(a), sb = besorgTerminKey(b);
         return sa < sb ? -1 : (sa > sb ? 1 : 0);   // ISO yyyy-mm-dd -> lexikografisch = chronologisch
       });
       return [{ label: '', entries: sorted }];     // flache Liste, kein Gruppen-Heading
@@ -2232,11 +2410,21 @@
     if (besorgSort === 'wer') return besorgGroupByAssignee(items);
     return besorgGroupByEvent(items);              // 'events' (Default)
   }
-  // startDate des Events als Sortier-Key; fehlt/ungueltig -> ans Ende (defensiv, kein Crash).
-  function eventStartKey(eventId){
-    const ev = (lastEvents || {})[eventId];
-    const sd = ev && ev.startDate;
-    return (typeof sd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sd)) ? sd : '\uffff';
+  // ISO yyyy-mm-dd oder null (defensiv, kein Date-Objekt -> keine Zeitzonen-Falle wie 0023).
+  function isoDateOrNull(v){
+    return (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : null;
+  }
+  // Termin-Sort-Key (Ticket 0032, C): item.dueDate ("bis wann"), sonst Event-startDate,
+  // sonst ans Ende. Lexikografisch = chronologisch.
+  function besorgTerminKey(entry){
+    return isoDateOrNull(entry.it && entry.it.dueDate)
+        || isoDateOrNull(((lastEvents || {})[entry.eventId] || {}).startDate)
+        || '\uffff';
+  }
+  // Relevantes Anzeige-Datum eines Eintrags: dueDate, sonst Event-startDate (kann null sein).
+  function besorgRelDate(entry){
+    return isoDateOrNull(entry.it && entry.it.dueDate)
+        || isoDateOrNull(((lastEvents || {})[entry.eventId] || {}).startDate);
   }
   // Events-Gruppierung: pro Event ein Abschnitt (Event-Name als Heading); Reihenfolge =
   // collectOpenItems (Anlage-Reihenfolge der Events) -> stabil.
@@ -2324,6 +2512,19 @@
       if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); jumpToEvent(e); }
     });
     sub.appendChild(ev);
+    // Relevantes Datum (Ticket 0032, C): bei Termin-Sort immer, sonst nur wenn dueDate gesetzt.
+    // Anzeige = dueDate ("bis wann"), sonst Event-Datum (startDate). dueDate gesetzt -> betont.
+    const hasDue = !!isoDateOrNull(it.dueDate);
+    const relDate = besorgRelDate(entry);
+    if (relDate && (besorgSort === 'termin' || hasDue)){
+      const dt = document.createElement('span');
+      dt.className = 'besorg-due' + (hasDue ? ' has-due' : '');
+      dt.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+      const dlab = document.createElement('span');
+      dlab.textContent = fmtDayMon(relDate);        // textContent -> XSS-sicher
+      dt.appendChild(dlab);
+      sub.appendChild(dt);
+    }
     if (besorgFilter === 'alle' && besorgSort !== 'wer'){  // in "Alle" wer bringt's mit -- bei
                                                    // Wer-bringt's-Sort redundant (Gruppen-Heading)
       const who = document.createElement('span');
@@ -2354,6 +2555,19 @@
     try { await update(ref(db, `rooms/${state.room}/events/${eventId}/packliste/${itemId}`), { done: true }); }
     catch(e){ /* Live-Listener reconciled */ }
   }
+  // Sortier-Dropdown (Ticket 0032, B): kompaktes <select> statt Pill-Reihe.
+  const besorgSortSel = $('besorg-sort-select');
+  // "Wer bringt's" nur bei Filter Alle (A): Option sonst ausblenden + deaktivieren. War sie
+  // aktiv und der Filter wechselt weg -> sauberer Fallback auf "Events" (keine sinnlose
+  // Sortierung bei Meine/Fuer alle, wo alle Items dieselbe/keine Zuweisung haben).
+  function syncBesorgSortOptions(){
+    if (!besorgSortSel) return;
+    const werOpt = besorgSortSel.querySelector('option[data-only-alle]');   // die 'wer'-Option
+    const allowWer = (besorgFilter === 'alle');
+    if (werOpt){ werOpt.hidden = !allowWer; werOpt.disabled = !allowWer; }
+    if (!allowWer && besorgSort === 'wer') besorgSort = 'events';           // Fallback Events
+    besorgSortSel.value = besorgSort;
+  }
   // Filter-Umschalter (Meine/Fuer alle/Alle)
   const besorgFilterEl = $('besorg-filter');
   if (besorgFilterEl){
@@ -2361,24 +2575,21 @@
       btn.addEventListener('click', () => {
         besorgFilter = btn.dataset.bf || 'meine';
         besorgFilterEl.querySelectorAll('.bf-btn').forEach(b => b.classList.toggle('active', b === btn));
+        syncBesorgSortOptions();                 // 'Wer bringt's' je Filter ein-/ausblenden + Fallback
         renderBesorg();
       });
     });
   }
-  // Sortier-Umschalter (Events/Termin/Wer bringt's) -- Ticket 0031
-  const besorgSortEl = $('besorg-sort');
-  if (besorgSortEl){
-    besorgSortEl.querySelectorAll('.bs-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        besorgSort = btn.dataset.bs || 'events';
-        besorgSortEl.querySelectorAll('.bs-btn').forEach(b => b.classList.toggle('active', b === btn));
-        renderBesorg();
-      });
+  if (besorgSortSel){
+    besorgSortSel.addEventListener('change', () => {
+      besorgSort = besorgSortSel.value || 'events';
+      renderBesorg();
     });
+    syncBesorgSortOptions();                      // Initialzustand (Default Filter Meine -> kein 'wer')
   }
-  if (DEBUG) Object.assign(window.__cp, { renderBesorg, collectOpenItems,   // Test-Belege (0030/0031)
-    setBesorgFilter: f => { besorgFilter = f; renderBesorg(); },
-    setBesorgSort:   s => { besorgSort = s;   renderBesorg(); } });
+  if (DEBUG) Object.assign(window.__cp, { renderBesorg, collectOpenItems,   // Test-Belege (0030/0031/0032)
+    setBesorgFilter: f => { besorgFilter = f; syncBesorgSortOptions(); renderBesorg(); },
+    setBesorgSort:   s => { besorgSort = s;   if (besorgSortSel) besorgSortSel.value = s; renderBesorg(); } });
 
   // Voting: Stimme setzen (Badge wandert mit)
   document.querySelectorAll('.vote-opt').forEach(o => o.addEventListener('click', () => {
