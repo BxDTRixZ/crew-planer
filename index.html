@@ -1024,12 +1024,15 @@
                                // color = Hex ohne '#', z.B. "5E5CE6"
          events/{eventId}:   { type, name, location, dateRange, status,
                                description, modules, participants, createdBy,
-                               createdAt, startDate?, deadline?, deadlineISO?,
+                               createdAt, startDate?, endDate?, deadline?, deadlineISO?,
                                autoStatusDate?, autoStatusTo? }
                                // type:        "urlaub" | "treffen"  (waehlt den Tab)
                                // status:      "plan" | "live" | "past"
-                               // dateRange:   Anzeige-String, z.B. "12. - 19. Juli"
-                               // startDate:   optional ISO yyyy-mm-dd -> Countdown
+                               // dateRange:   Anzeige-String, z.B. "29. Aug - 3. Sep 2026"
+                               //              (monatsuebergreifend moeglich, Ticket 0023)
+                               // startDate:   optional ISO yyyy-mm-dd -> Countdown/Kalender
+                               // endDate:     optional ISO yyyy-mm-dd; Bereichs-Ende (Ticket 0023);
+                               //              fehlt bei Legacy/Eintages -> wie Start behandeln
                                // deadline:    optional Anzeige-String (Zusage-Frist)
                                // deadlineISO: optional ISO yyyy-mm-dd der Frist (Logik)
                                // autoStatusDate: optional ISO; ab diesem Tag greift
@@ -1728,60 +1731,78 @@
     asTo.innerHTML = (next === 'live' ? 'Läuft ' : 'Vorbei ') + CHEVRON;
   });
 
-  // ---- Datepicker (Zeitraum): interaktiver Bereichs-Picker, ein Monat ----
-  const dpState = { year: 2026, month: 6, start: null, end: null };
+  // ---- Datepicker (Zeitraum): echter Bereichs-Picker -- beliebiger Monat/Jahr,
+  // monatsuebergreifend (Ticket 0023). start/end sind volle {y,m,d}-Objekte (NICHT mehr
+  // blosse Tageszahlen) -> die Auswahl ueberlebt die Monats-Navigation. year/month steuern
+  // nur noch, WELCHER Monat gerade im Grid sichtbar ist.
+  const dpState = { year: 2026, month: 6, start: null, end: null };   // start/end = {y,m,d}|null
+  function dpKey(o){ return o.y * 10000 + o.m * 100 + o.d; }          // vergleichbarer Tages-Schluessel
+  function dateISO(o){ return `${o.y}-${String(o.m+1).padStart(2,'0')}-${String(o.d).padStart(2,'0')}`; }
   function dpRange() {
     if (!dpState.start) return null;
     const a = dpState.start, b = dpState.end || dpState.start;
-    return { lo: Math.min(a,b), hi: Math.max(a,b) };
+    return dpKey(a) <= dpKey(b) ? { lo:a, hi:b } : { lo:b, hi:a };    // immer lo <= hi
   }
-  function dpISO(day) {
-    return `${dpState.year}-${String(dpState.month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  function dpDayCount(lo, hi){   // inklusive Tagesanzahl ueber Monats-/Jahresgrenzen; UTC -> kein DST-Shift
+    return Math.round((Date.UTC(hi.y, hi.m, hi.d) - Date.UTC(lo.y, lo.m, lo.d)) / 86400000) + 1;
+  }
+  // Anzeige-String, monats- UND jahresuebergreifend (Ticket 0023):
+  //   Eintages:        "15. August 2026"
+  //   gleicher Monat:  "12. – 19. Juli 2026"
+  //   anderer Monat:   "29. Aug – 3. Sep 2026"
+  //   anderes Jahr:    "29. Dez 2026 – 3. Jan 2027"
+  function dpFmtRange(lo, hi){
+    if (dpKey(lo) === dpKey(hi)) return `${lo.d}. ${MONTHS_DE[lo.m]} ${lo.y}`;
+    if (lo.y === hi.y && lo.m === hi.m) return `${lo.d}. – ${hi.d}. ${MONTHS_DE[lo.m]} ${lo.y}`;
+    if (lo.y === hi.y)                  return `${lo.d}. ${MONTHS_ABBR[lo.m]} – ${hi.d}. ${MONTHS_ABBR[hi.m]} ${lo.y}`;
+    return `${lo.d}. ${MONTHS_ABBR[lo.m]} ${lo.y} – ${hi.d}. ${MONTHS_ABBR[hi.m]} ${hi.y}`;
   }
   function dpRangeText() {
     const r = dpRange(); if (!r) return '';
-    const mn = MONTHS_DE[dpState.month];
-    return r.lo === r.hi ? `${r.lo}. ${mn}` : `${r.lo}. – ${r.hi}. ${mn}`;
+    return dpFmtRange(r.lo, r.hi);
   }
   function renderDatepick() {
     const grid = $('dp-grid'); if (!grid) return;
-    const startDow = (new Date(dpState.year, dpState.month, 1).getDay() + 6) % 7; // Mo=0
-    const days = new Date(dpState.year, dpState.month+1, 0).getDate();
+    const y = dpState.year, mo = dpState.month;
+    const startDow = (new Date(y, mo, 1).getDay() + 6) % 7; // Mo=0
+    const days = new Date(y, mo+1, 0).getDate();
     const r = dpRange();
+    const loK = r ? dpKey(r.lo) : null, hiK = r ? dpKey(r.hi) : null;
     let h = '';
     for (let i=0;i<startDow;i++) h += '<div class="cal-day muted"></div>';
     for (let d=1; d<=days; d++) {
       let cls = 'cal-day dp-day';
       if (r) {
-        if (r.lo === r.hi && d === r.lo) cls += ' solo';
-        else if (d === r.lo) cls += ' start';
-        else if (d === r.hi) cls += ' end';
-        else if (d > r.lo && d < r.hi) cls += ' between';
+        const k = dpKey({ y, m:mo, d });           // Tag im SICHTBAREN Monat -> mit Bereich vergleichen
+        if (loK === hiK && k === loK) cls += ' solo';
+        else if (k === loK) cls += ' start';
+        else if (k === hiK) cls += ' end';
+        else if (k > loK && k < hiK) cls += ' between';
       }
       h += `<div class="${cls}" data-day="${d}">${d}</div>`;
     }
     grid.innerHTML = h;
     const cm = document.querySelector('#datepick .cal-month');
-    if (cm) cm.textContent = `${MONTHS_DE[dpState.month]} ${dpState.year}`;
+    if (cm) cm.textContent = `${MONTHS_DE[mo]} ${y}`;
     const sum = document.querySelector('#datepick .dp-summary');
     if (sum) sum.textContent = r
-      ? (r.hi > r.lo ? `${r.lo}. – ${r.hi}. ${MONTHS_DE[dpState.month]} · ${r.hi-r.lo+1} Tage`
-                     : `${r.lo}. ${MONTHS_DE[dpState.month]}`)
+      ? (dpKey(r.hi) > dpKey(r.lo) ? `${dpRangeText()} · ${dpDayCount(r.lo, r.hi)} Tage` : dpRangeText())
       : 'Zeitraum wählen';
     const fld = $('cr-daterange');
     if (fld) fld.innerHTML = (r ? esc(dpRangeText()) + ' ' : 'Datum wählen ') + CHEVRON;
   }
   $('dp-grid').addEventListener('click', e => {
     const cell = e.target.closest('.dp-day'); if (!cell || !cell.dataset.day) return;
-    const day = +cell.dataset.day;
-    if (!dpState.start || dpState.end) { dpState.start = day; dpState.end = null; } // (neu) Start
-    else { dpState.end = day; }                                                     // Ende
+    const picked = { y: dpState.year, m: dpState.month, d: +cell.dataset.day };
+    if (!dpState.start || dpState.end) { dpState.start = picked; dpState.end = null; }                       // (neu) Start
+    else if (dpKey(picked) < dpKey(dpState.start)) { dpState.end = dpState.start; dpState.start = picked; }  // End < Start -> tauschen
+    else { dpState.end = picked; }                                                                          // Ende
     renderDatepick();
   });
   function shiftMonth(delta) {
     let m = dpState.month + delta, y = dpState.year;
     if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
-    dpState.month = m; dpState.year = y; dpState.start = null; dpState.end = null;   // Auswahl je Monat
+    dpState.month = m; dpState.year = y;   // Auswahl BLEIBT erhalten -> monatsuebergreifend (Ticket 0023)
     renderDatepick();
   }
   const dpNav = document.querySelectorAll('#datepick .cal-nav button');
@@ -1796,7 +1817,9 @@
     document.querySelectorAll('.type-card').forEach(x =>
       x.classList.toggle('on', x.dataset.type === 'urlaub'));
     renderModules('urlaub');
-    dpState.year = 2026; dpState.month = 6; dpState.start = null; dpState.end = null;
+    // Default: aktueller Monat (sinnvoller Start), frei navigierbar; keine Tag-Vorauswahl (Ticket 0023).
+    const dpToday = new Date();
+    dpState.year = dpToday.getFullYear(); dpState.month = dpToday.getMonth(); dpState.start = null; dpState.end = null;
     renderDatepick();
     dsw.classList.add('on'); drow.style.display = '';
     // Frist + Auto-Status zuruecksetzen (Ticket 0007)
@@ -1843,14 +1866,25 @@
     crState.locLon = coordOK(ev.lon) ? Number(ev.lon) : null;
     closeLocAC();
     $('cr-desc').value = ev.description || '';
-    // Zeitraum: Start aus startDate (Jahr/Monat/Tag), Endtag aus dateRange (gleicher
-    // Monat, wie der Bereichs-Picker ihn erzeugt). Kein startDate -> kein Datum.
+    // Zeitraum (Ticket 0023): Start aus startDate, Ende aus endDate -- explizit, auch
+    // monatsuebergreifend. Legacy-Events ohne endDate: Endtag defensiv aus dem alten
+    // dateRange (gleicher Monat) ableiten, sonst Eintages. Kein startDate -> kein Datum.
     dpState.start = null; dpState.end = null;
     const sd = sdParseISO(ev.startDate);
     if (sd){
-      dpState.year = sd.y; dpState.month = sd.m; dpState.start = sd.d;
-      const nums = String(ev.dateRange || '').match(/\d+/g);
-      if (nums && nums.length >= 2){ const hi = +nums[nums.length-1]; if (hi !== sd.d) dpState.end = hi; }
+      dpState.year = sd.y; dpState.month = sd.m;
+      dpState.start = { y: sd.y, m: sd.m, d: sd.d };
+      const ed = sdParseISO(ev.endDate);
+      if (ed){
+        if (dpKey({ y:ed.y, m:ed.m, d:ed.d }) !== dpKey(dpState.start)) dpState.end = { y: ed.y, m: ed.m, d: ed.d };
+      } else {
+        // Legacy (kein endDate): Endtag aus altem dateRange (gleicher Monat wie Start)
+        const nums = String(ev.dateRange || '').match(/\d+/g);
+        if (nums && nums.length >= 2){
+          const hi = +nums[nums.length-1];
+          if (hi >= 1 && hi <= 31 && hi !== sd.d) dpState.end = { y: sd.y, m: sd.m, d: hi };
+        }
+      }
     }
     renderDatepick();
     // Frist (0007): vorhanden -> Switch an + Werte; sonst aus.
@@ -2047,7 +2081,8 @@
         dateRange: dpRangeText(),
         description: $('cr-desc').value.trim(),
         modules, participants,
-        startDate:      r    ? dpISO(r.lo)          : null,
+        startDate:      r    ? dateISO(r.lo)        : null,
+        endDate:        r    ? dateISO(r.hi)        : null,   // expliziter End-Wert (Ticket 0023), auch cross-month
         deadline:       dlOn ? crState.deadlineText : null,
         deadlineISO:    dlOn ? crState.deadlineISO  : null,
         autoStatusDate: asOn ? crState.asISO        : null,
@@ -2074,7 +2109,7 @@
       createdBy: state.memberId,
       createdAt: serverTimestamp()
     };
-    if (r) ev.startDate = dpISO(r.lo);                      // ISO-Start fuer Countdown
+    if (r) { ev.startDate = dateISO(r.lo); ev.endDate = dateISO(r.hi); }   // ISO Start + Ende (Ticket 0023)
     if (hasLoc) { ev.lat = Number(crState.locLat); ev.lon = Number(crState.locLon); }   // exakte OSM-Koordinaten (0020)
     // Frist: nur wenn Switch an UND ein Datum gewaehlt -> Anzeige-String + ISO (Ticket 0007)
     if (dsw.classList.contains('on') && crState.deadlineISO) {
