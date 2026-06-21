@@ -66,6 +66,9 @@
   .avatar { width:30px; height:30px; border-radius:50%; border:2px solid var(--card); margin-left:-9px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; }
   .avatar:first-child { margin-left:0; }
   .avatar.more { background:#3A3A3C; color:var(--label-2); font-size:11px; }
+  /* Foto-Avatare (Ticket 0024): Google-Foto fuellt den runden Rahmen, sonst Initialen */
+  .avatar.has-photo, .pav.has-photo { padding:0; overflow:hidden; background:#2C2C2E; }
+  .avatar.has-photo img, .pav.has-photo img { width:100%; height:100%; object-fit:cover; display:block; }
   .going { font-size:14px; color:var(--label-2); font-weight:500; letter-spacing:-0.2px; }
   .going b { color:var(--green); font-weight:600; }
   .card-deadline { display:flex; align-items:center; gap:6px; margin-top:14px; padding-top:13px; border-top:0.5px solid var(--separator); color:var(--label-2); font-size:13px; letter-spacing:-0.1px; }
@@ -416,20 +419,62 @@
   .ob-field { display:flex; gap:8px; }
   .ob-input { width:100%; background:var(--bg); border:0.5px solid var(--card-border); border-radius:14px; padding:15px 16px; color:var(--label); font-size:16px; font-family:inherit; outline:none; letter-spacing:-0.3px; }
   .ob-input::placeholder { color:#5A5A5E; }
-  .ob-name { margin-top:10px; }
   #ob-room { text-transform:uppercase; flex:1; min-width:0; }
   .ob-newroom { flex-shrink:0; border:none; background:var(--card-2); color:var(--accent-text); font-size:15px; font-weight:600; padding:0 16px; border-radius:14px; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
   .ob-newroom:active { transform:scale(0.96); }
   .ob-join { width:100%; margin-top:14px; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; box-shadow:0 4px 16px rgba(94,92,230,0.4); transition:transform 0.15s var(--ease); }
   .ob-join:active { transform:scale(0.97); }
   .ob-hint { font-size:13px; color:var(--label-2); text-align:center; margin-top:14px; letter-spacing:-0.1px; line-height:1.4; }
+  /* Sign-in-Gate (Ticket 0024): Pflicht-Login mit Google. Liegt UEBER allem (z-index 700 >
+     Onboarding 600) und ist per Default offen -> vor der Anmeldung ist NICHTS vom Raum-/
+     Event-Inhalt sichtbar. onAuthStateChanged schaltet open/zu. */
+  .signin { position:absolute; inset:0; z-index:700; background:radial-gradient(120% 70% at 50% 0%, rgba(94,92,230,0.22), transparent 65%), var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; padding:32px 26px; }
+  .signin.open { display:flex; }
+  .si-inner { width:100%; max-width:360px; text-align:center; }
+  .si-logo { font-size:40px; font-weight:700; letter-spacing:-1px; }
+  .si-tagline { font-size:15px; color:var(--label-2); margin-top:6px; letter-spacing:-0.2px; }
+  .si-card { background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); padding:24px 18px; margin-top:30px; }
+  .si-google { width:100%; display:flex; align-items:center; justify-content:center; gap:11px; padding:14px; border-radius:var(--r-pill); background:#fff; border:none; color:#1f1f1f; font-size:16px; font-weight:600; font-family:inherit; cursor:pointer; letter-spacing:-0.2px; box-shadow:0 4px 16px rgba(0,0,0,0.25); transition:transform 0.15s var(--ease); }
+  .si-google:active { transform:scale(0.97); }
+  .si-google:disabled { opacity:0.6; cursor:default; }
+  .si-google svg { width:20px; height:20px; flex-shrink:0; }
+  .si-hint { font-size:13px; color:var(--label-2); margin-top:16px; letter-spacing:-0.1px; line-height:1.4; }
+  .si-error { font-size:13px; color:#FF453A; margin-top:14px; line-height:1.4; display:none; }
+  .si-error.show { display:block; }
+  /* Profil-/Abmelden-Block im Crew-Tab (Ticket 0024) */
+  .me-row { display:flex; align-items:center; gap:12px; background:var(--card); border:0.5px solid var(--card-border); border-radius:var(--r-card); padding:12px 14px; margin:0 0 16px; }
+  .me-av { width:40px; height:40px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:600; background:#2C2C2E; overflow:hidden; }
+  .me-av img { width:100%; height:100%; object-fit:cover; display:block; }
+  .me-info { flex:1; min-width:0; }
+  .me-name { font-size:15px; font-weight:600; letter-spacing:-0.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .me-sub { font-size:12px; color:var(--label-2); margin-top:1px; }
+  .me-signout { flex-shrink:0; border:none; background:var(--card-2); color:var(--accent-text); font-size:14px; font-weight:600; padding:9px 14px; border-radius:12px; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
+  .me-signout:active { transform:scale(0.96); }
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- ONBOARDING (login-loser Zugang: Raum-Code + Name; ?room=CODE -> direkter Einstieg) -->
-  <div class="onboarding open" id="onboarding">
+  <!-- SIGN-IN-GATE (Ticket 0024): Pflicht-Login mit Google. Default offen -> ohne
+       Anmeldung sieht man NUR diesen Screen, nichts vom Raum-/Event-Inhalt. -->
+  <div class="signin open" id="signin">
+    <div class="si-inner">
+      <div class="si-logo">Crew</div>
+      <div class="si-tagline">Urlaube &amp; Treffen gemeinsam planen</div>
+      <div class="si-card">
+        <button class="si-google" id="signin-btn" type="button">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Mit Google anmelden
+        </button>
+        <div class="si-hint">Melde dich mit deinem Google-Konto an. Dein Name und Foto kommen aus dem Konto.</div>
+        <div class="si-error" id="signin-error" role="alert"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONBOARDING (Raum-Code beitreten/erstellen; Identitaet kommt aus Google -> keine
+       Namenseingabe mehr. ?room=CODE -> direkter Einstieg nach Anmeldung). -->
+  <div class="onboarding" id="onboarding">
     <div class="ob-inner">
       <div class="ob-logo">Crew</div>
       <div class="ob-tagline">Urlaube &amp; Treffen gemeinsam planen</div>
@@ -439,9 +484,8 @@
           <input id="ob-room" class="ob-input" placeholder="Raum-Code" autocomplete="off" autocapitalize="characters" maxlength="12">
           <button class="ob-newroom" id="ob-newroom" type="button">Neu</button>
         </div>
-        <input id="ob-name" class="ob-input ob-name" placeholder="Dein Name" autocomplete="off">
         <button class="ob-join" id="ob-join" type="button">Beitreten</button>
-        <div class="ob-hint">Kein Login. Raum-Code teilen, Name eintippen, los.</div>
+        <div class="ob-hint">Raum-Code eingeben und beitreten -- oder mit "Neu" einen eigenen Raum erstellen und den Code teilen.</div>
       </div>
     </div>
   </div>
@@ -481,6 +525,15 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg>
             Teilen
           </button>
+        </div>
+        <!-- Profil + Abmelden (Ticket 0024): Google-Identitaet sichtbar, Logout-Knopf -->
+        <div class="me-row" id="me-row">
+          <div class="me-av" id="me-av"></div>
+          <div class="me-info">
+            <div class="me-name" id="me-name">&ndash;</div>
+            <div class="me-sub">Angemeldet mit Google</div>
+          </div>
+          <button class="me-signout" id="signout-btn" type="button">Abmelden</button>
         </div>
         <div class="section-label" style="padding:0 4px">Deine Gruppen</div>
         <!-- Gruppen-Feature folgt spaeter (nur Empty-State, NICHT bauen). Der fruehere
@@ -998,6 +1051,11 @@
   import {
     getDatabase, ref, onValue, set, get, push, remove, update, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  // Auth-Modul derselben Version (Ticket 0024): Pflicht-Login mit Google.
+  import {
+    getAuth, GoogleAuthProvider, signInWithRedirect, signInWithPopup,
+    getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   /* ============================================================
      Firebase-Config (public by design -- Sicherheit laeuft ueber
@@ -1019,9 +1077,14 @@
        rooms/{roomCode}/
          meta:               { name?, createdAt }
                                // Raum-Metadaten (createdAt = serverTimestamp)
-         members/{memberId}: { name, color }
-                               // login-lose Teilnehmer; memberId = push-Key
-                               // color = Hex ohne '#', z.B. "5E5CE6"
+         ownerUid:           "<google-uid>"
+                               // Ersteller-uid (Ticket 0024); NUR beim Anlegen gesetzt.
+                               // Vorbereitung Host-Rechte + P6; noch KEINE Rechte-Erzwingung.
+         members/{uid}:      { name, photo?, color }
+                               // Mitglieder per Google-uid (Ticket 0024). name/photo aus
+                               // dem Google-Konto (displayName/photoURL). color = Hex ohne
+                               // '#', z.B. "5E5CE6". Legacy (vor 0024): Schluessel war ein
+                               // push-Key (anonyme memberId), photo fehlt -> Initialen-Avatar.
          events/{eventId}:   { type, name, location, dateRange, status,
                                description, modules, participants, createdBy,
                                createdAt, startDate?, endDate?, deadline?, deadlineISO?,
@@ -1041,9 +1104,8 @@
                                //              Auto-Status; schiebt nur VORWAERTS
                                // description: optionaler Freitext ("Sonstige Infos")
                                // modules:     { Modul-Name: bool } -- Toggles je Typ
-                               // participants:{ memberId: true } -- vorerst nur Ersteller
-                               //              (Pro-Event-Teilnehmer-Auswahl -> P6)
-                               // createdBy:   memberId des Erstellers
+                               // participants:{ uid: true } -- gewaehlte Teilnehmer + Ersteller
+                               // createdBy:   uid des Erstellers (Google-Identitaet, Ticket 0024)
                                // createdAt:   serverTimestamp
          availability/{memberId}/{YYYY-MM-DD}: true
                                // Abwesenheit raumweit (Ticket 0008). Tag-Klick im
@@ -1054,9 +1116,14 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+  const auth = getAuth(app);                    // Google-Login (Ticket 0024)
+  const provider = new GoogleAuthProvider();
 
   const AVATAR_COLORS = ['5E5CE6','FF9500','34C759','FF2D55','00C7BE','AF52DE','007AFF','FF9F0A'];
-  const state = { room:null, name:null, memberId:null, color:null };
+  // Identitaet seit 0024 ueber die Google-uid. state.memberId == state.uid -> bestehende
+  // Member-/Teilnehmer-/Availability-Logik (memberId-basiert) laeuft unveraendert weiter,
+  // nur dass der Schluessel jetzt die stabile uid statt einer anonymen push-ID ist.
+  const state = { room:null, name:null, memberId:null, uid:null, photo:null, color:null };
   let membersCache = {};
   let lastEvents = {};
   let availabilityCache = {};                 // { memberId: { 'YYYY-MM-DD': true } } (Ticket 0008)
@@ -1066,7 +1133,7 @@
   // denselben Client. NUR auf localhost aktiv -- auf einer Produktions-URL bleibt der
   // Hook aus (kein RTDB-Schreibzugriff via Browser-Konsole). Wird in P6 ganz entfernt.
   const DEBUG = ['localhost','127.0.0.1','','0.0.0.0'].includes(location.hostname);
-  if (DEBUG) window.__cp = { app, db, ref, onValue, set, get, push, remove, update, serverTimestamp, state, ready:true };
+  if (DEBUG) window.__cp = { app, db, auth, ref, onValue, set, get, push, remove, update, serverTimestamp, state, ready:true };
 
   /* ---- Helfer ---- */
   function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1083,6 +1150,27 @@
   // nur 3-/6-stellige Hex zulassen -- verhindert HTML/CSS-Injection ueber
   // manipulierte color-Werte aus der RTDB (Testmodus hat noch keine Rules)
   function safeColor(c){ return /^[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(String(c||'')) ? c : '5E5CE6'; }
+  /* ---- Identitaet aus Google (Ticket 0024) ----
+     Nur https-Foto-URLs zulassen (Google liefert lh3.googleusercontent.com) -> keine
+     javascript:/data:-Injection in src. Kein/ungueltiges Foto -> '' (Initialen-Fallback).
+     Name: displayName -> sonst email-Prefix -> "Unbenannt". */
+  function safePhotoURL(u){ u = String(u || ''); return /^https:\/\//i.test(u) ? u : ''; }
+  function displayNameOf(user){
+    const dn = user && user.displayName && String(user.displayName).trim();
+    if (dn) return dn;
+    const em = user && user.email && String(user.email);
+    if (em && em.includes('@')){ const p = em.split('@')[0].trim(); if (p) return p; }
+    return 'Unbenannt';
+  }
+  // Avatar-Baustein: Foto (sicher, https) -> <img>, sonst Initialen auf Farbe.
+  // referrerpolicy=no-referrer: Google-CDN liefert sonst teils 403. Genutzt von
+  // Card-, Crew- und Detail-Avataren. m kann ein Legacy-Member ohne photo sein.
+  function avatarMarkup(m, cls){
+    cls = cls || 'avatar';
+    const ph = safePhotoURL(m && m.photo);
+    if (ph) return `<div class="${cls} has-photo"><img src="${esc(ph)}" alt="" referrerpolicy="no-referrer"></div>`;
+    return `<div class="${cls}" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`;
+  }
   function genRoomCode(){
     const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let s = ''; for (let i=0;i<6;i++) s += A[Math.floor(Math.random()*A.length)];
@@ -1090,11 +1178,9 @@
   }
   function sanitizeRoom(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12); }
   function urlRoom(){ return sanitizeRoom(new URLSearchParams(location.search).get('room')); }
-  // Name global (ein Name pro Nutzer) in localStorage -> Reload-Persistenz (Ticket 0003).
-  // Zwischenloesung bis echtes Login; KEIN Auth. try/catch: Privacy-Mode kann blocken.
-  const NAME_KEY = 'cp:name';
-  function loadName(){ try { return localStorage.getItem(NAME_KEY) || ''; } catch(e){ return ''; } }
-  function saveName(n){ try { localStorage.setItem(NAME_KEY, n); } catch(e){} }
+  // Hinweis (Ticket 0024): Die fruehere Name-in-localStorage-Persistenz (Ticket 0003)
+  // entfaellt -- Name/Identitaet kommen aus Google, Reload-Persistenz uebernimmt
+  // Firebase-Auth (onAuthStateChanged). Keine manuelle Namenseingabe mehr.
   function daysUntil(iso){
     const t = new Date(iso + 'T00:00:00'); if (isNaN(t)) return null;
     const now = new Date(); now.setHours(0,0,0,0);
@@ -1115,51 +1201,130 @@
       $('ob-room-wrap').style.display = '';
     }
     ob.classList.add('open');
-    setTimeout(() => $('ob-name').focus(), 60);
+    if (!r) setTimeout(() => { const f = $('ob-room'); if (f) f.focus(); }, 60);
   }
   let joining = false;
   async function join(){
     if (joining) return;                       // Doppel-Submit (Doppelklick) abfangen
-    const name = $('ob-name').value.trim();
+    if (!state.uid){ showSignIn(); return; }    // ohne Anmeldung kein Beitritt (Auth-Gate, 0024)
+    const name = state.name || 'Unbenannt';     // Identitaet aus Google -- keine Namenseingabe mehr
     let room = urlRoom() || sanitizeRoom($('ob-room').value);
-    if (!name){ $('ob-name').focus(); return; }
     if (!room){ room = genRoomCode(); }
     joining = true; $('ob-join').disabled = true;
     try {
-      state.name = name; state.room = room; state.color = colorFor(name + ':' + room);
-      saveName(name);                            // Reload-Persistenz: Name merken (Ticket 0003)
+      state.room = room; state.color = colorFor(state.uid + ':' + room);
       // Raum in der URL halten
       const u = new URL(location.href); u.searchParams.set('room', room);
       history.replaceState(null, '', u);
-      // meta anlegen, falls Raum neu (kein Transaktions-Schutz noetig: createdAt idempotent)
+      // meta anlegen, falls Raum neu (createdAt idempotent). Beim Anlegen ownerUid
+      // (= Ersteller-uid) am Raum hinterlegen (Ticket 0024; Vorbereitung Host-Rechte +
+      // P6). NUR beim Anlegen -- Beitreten zu fremdem Raum ueberschreibt ownerUid nicht.
       const metaRef = ref(db, `rooms/${room}/meta`);
       const metaSnap = await get(metaRef);
-      if (!metaSnap.exists()) await set(metaRef, { createdAt: serverTimestamp() });
-      // Member schreiben (BR-10). memberId pro Raum in localStorage halten -> EINE
-      // Identitaet pro Browser. Frueher sessionStorage (Tab-Session): ein neuer Tab /
-      // Browser-Neustart fand die memberId nicht und der Auto-Rejoin (0003) legte einen
-      // ZWEITEN Member an -> Self-Duplikat (Ticket 0018, Bug C1). localStorage ueberlebt
-      // Tab/Neustart; weiterhin login-los (anonyme Browser-ID, kein Account).
-      // Migration: alte sessionStorage-IDs noch lesen, ab jetzt nach localStorage schreiben.
-      const skey = `cp:member:${room}`;
-      let memberId = null;
-      try { memberId = localStorage.getItem(skey) || sessionStorage.getItem(skey); } catch(e){}
-      if (memberId){
-        const ex = await get(ref(db, `rooms/${room}/members/${memberId}`));
-        if (!ex.exists()) memberId = null;     // Eintrag weg -> neu anlegen
+      if (!metaSnap.exists()){
+        await set(metaRef, { createdAt: serverTimestamp() });
+        await set(ref(db, `rooms/${room}/ownerUid`), state.uid);
       }
-      if (!memberId){
-        memberId = push(ref(db, `rooms/${room}/members`)).key;
-      }
-      try { localStorage.setItem(skey, memberId); } catch(e){}
-      state.memberId = memberId;
-      await set(ref(db, `rooms/${room}/members/${memberId}`), { name, color: state.color });
+      // Mitgliedschaft uid-basiert: members/{uid} (Ticket 0024). Doppeltes Beitreten
+      // desselben Kontos schreibt denselben Schluessel -> genau EIN Mitglied (kein
+      // Self-Duplikat), ganz ohne localStorage-memberId-Logik -- die uid IST die stabile
+      // Identitaet (Reload-Persistenz uebernimmt Firebase-Auth).
+      state.memberId = state.uid;
+      const member = { name, color: state.color };
+      if (state.photo) member.photo = state.photo;   // Google-Foto, falls vorhanden
+      await set(ref(db, `rooms/${room}/members/${state.uid}`), member);
       // Home zeigen + Live-Listener
       $('onboarding').classList.remove('open');
       subscribeRoom(room);
     } finally {
       joining = false; $('ob-join').disabled = false;
     }
+  }
+
+  /* ============================================================
+     AUTH-GATE (Ticket 0024): Pflicht-Login mit Google.
+     onAuthStateChanged ist die EINZIGE Quelle des Anmelde-Zustands. applyAuthState
+     schaltet zwischen Sign-in-Screen und App um und setzt die Identitaet (uid/name/foto).
+     Test-Hook: window.__cp.applyAuthState(fakeUser) treibt denselben Pfad ohne echtes
+     Google (analog zum RTDB-Mock) -- nur die "Google-Tuer" ist gemockt, Gate +
+     Identitaets-Logik laufen echt.
+     ============================================================ */
+  let prevUid = null;
+  function showSignIn(){
+    $('signin').classList.add('open');
+    $('onboarding').classList.remove('open');
+    const d = $('detail'); if (d) d.classList.remove('open');   // Detail nie ueber dem Gate
+  }
+  // Profil-Block (Crew-Tab): eigener Name + Foto/Initiale (Ticket 0024).
+  function renderMe(){
+    const nm = $('me-name'); if (nm) nm.textContent = state.name || '–';
+    const av = $('me-av'); if (!av) return;
+    const ph = safePhotoURL(state.photo);
+    av.classList.toggle('has-photo', !!ph);
+    av.style.background = ph ? '' : ('#' + safeColor(state.color));
+    av.innerHTML = ph ? `<img src="${esc(ph)}" alt="" referrerpolicy="no-referrer">` : esc(initials(state.name));
+  }
+  // Nach Anmeldung der Raum-Flow: ?room=CODE -> direkt beitreten (Identitaet aus Google),
+  // sonst Onboarding (Raum-Code waehlen). Reload bleibt dank Firebase-Auth angemeldet.
+  function startRoomFlow(){
+    $('signin').classList.remove('open');
+    const r = urlRoom();
+    if (r){
+      $('onboarding').classList.remove('open');
+      join().catch(() => showOnboarding());
+    } else {
+      showOnboarding();
+    }
+  }
+  // Einziger Umschalt-Punkt: angemeldet -> App, abgemeldet -> Sign-in-Screen.
+  function applyAuthState(user){
+    const uid = user && user.uid ? String(user.uid) : null;
+    if (uid){
+      state.uid = uid; state.memberId = uid;          // memberId == uid (Identitaets-Schluessel)
+      state.name = displayNameOf(user);
+      state.photo = safePhotoURL(user.photoURL);
+      hideSignInError();
+      renderMe();
+      $('signin').classList.remove('open');
+      if (uid !== prevUid) startRoomFlow();           // nur beim (Neu-)Anmelden den Raum-Flow starten
+    } else {
+      state.uid = null; state.memberId = null; state.name = null; state.photo = null;
+      renderMe();
+      showSignIn();
+    }
+    prevUid = uid;
+  }
+  if (DEBUG) window.__cp.applyAuthState = applyAuthState;   // Test-Treiber (Fake-User)
+
+  function showSignInError(e){
+    const el = $('signin-error'); if (!el) return;
+    const code = (e && (e.code || e.message)) ? String(e.code || e.message) : '';
+    el.textContent = 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.' + (code ? ' (' + code + ')' : '');
+    el.classList.add('show');
+  }
+  function hideSignInError(){ const el = $('signin-error'); if (el) el.classList.remove('show'); }
+
+  // Google-Sign-in: mobil-robust -> Redirect bevorzugt (iPhone-Browser). Scheitert der
+  // Redirect, Popup als Fallback. getRedirectResult wird beim Boot ausgewertet. Persistenz
+  // lokal -> Reload bleibt angemeldet.
+  async function startSignIn(){
+    const btn = $('signin-btn'); if (btn) btn.disabled = true;
+    hideSignInError();
+    try { await setPersistence(auth, browserLocalPersistence); } catch(e){}
+    try {
+      await signInWithRedirect(auth, provider);       // navigiert weg -> Code danach laeuft real nicht
+    } catch(e){
+      try {
+        await signInWithPopup(auth, provider);        // Fallback: onAuthStateChanged treibt die UI
+      } catch(e2){
+        showSignInError(e2);
+        if (btn) btn.disabled = false;
+      }
+    }
+  }
+  async function doSignOut(){
+    try { await signOut(auth); }                       // onAuthStateChanged(null) -> showSignIn
+    catch(e){ applyAuthState(null); }                  // Fehler -> defensiv direkt ausloggen
   }
 
   /* ---- Live-Listener auf den Raum ---- */
@@ -1249,8 +1414,7 @@
 
   function avatarsHTML(members, max){
     const arr = Object.values(members);
-    let h = arr.slice(0, max).map(m =>
-      `<div class="avatar" style="background:#${safeColor(m.color)}">${esc(initials(m.name))}</div>`).join('');
+    let h = arr.slice(0, max).map(m => avatarMarkup(m)).join('');   // Foto (0024) oder Initialen
     if (arr.length > max) h += `<div class="avatar more">+${arr.length-max}</div>`;
     return h;
   }
@@ -1343,7 +1507,7 @@
   // safeColor() nur Hex, esc() escaped den Namen -> kein HTML/CSS-Injection.
   function personHTML(m){
     return `<div class="person">`
-      + `<div class="pav" style="background:#${safeColor(m && m.color)}">${esc(initials(m && m.name))}</div>`
+      + avatarMarkup(m, 'pav')                            // Foto (0024) oder Initialen-Avatar
       + `<div class="pname">${esc((m && m.name) || '')}</div></div>`;
   }
   function renderCrew(){
@@ -1426,11 +1590,15 @@
     $('d-going').textContent = d.going;
     // Modul-Anzeige folgt der Auswahl des Events (Ticket 0018, Bug A)
     applyDetailModules(d.id && lastEvents[d.id] ? lastEvents[d.id].modules : null);
-    // full crew, no "+N"
-    $('d-avatars').innerHTML = (d.crew || '').split(',').filter(Boolean).map(p => {
-      const [ini, col] = p.split(':');
-      return `<div class="avatar" style="background:#${col}">${ini}</div>`;
-    }).join('');
+    // full crew, no "+N" -- bevorzugt aus den Live-Members (mit Google-Foto, 0024);
+    // Fallback auf das initials:color-codierte crew-Attribut (Legacy / Card-Dataset ohne id).
+    const evAv = d.id && lastEvents[d.id] ? lastEvents[d.id] : null;
+    $('d-avatars').innerHTML = evAv
+      ? Object.values(eventMembers(evAv)).map(m => avatarMarkup(m)).join('')
+      : (d.crew || '').split(',').filter(Boolean).map(p => {
+          const [ini, col] = p.split(':');
+          return `<div class="avatar" style="background:#${col}">${ini}</div>`;
+        }).join('');
     // Badge, Status-Pillen und RSVP-Block aus dem (effektiven) Status rendern.
     renderDetailStatus(d.status, d.deadline);
   }
@@ -2288,30 +2456,21 @@
     if (card) openDetail(card.dataset);
   }));
 
-  // Onboarding-Wiring
+  // Auth- + Onboarding-Wiring (Ticket 0024)
+  $('signin-btn').addEventListener('click', startSignIn);       // Mit Google anmelden
+  $('signout-btn').addEventListener('click', doSignOut);        // Abmelden
   $('ob-newroom').addEventListener('click', () => { $('ob-room').value = genRoomCode(); });
   $('ob-join').addEventListener('click', join);
-  $('ob-room').addEventListener('keydown', e => { if (e.key === 'Enter') $('ob-name').focus(); });
-  $('ob-name').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });
+  $('ob-room').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });   // Enter -> beitreten
   $('rc-share').addEventListener('click', shareRoom);   // Raum teilen (Ticket 0003)
 
-  /* ---- Init: Reload-Persistenz (Ticket 0003) ----
-     ?room=CODE in URL + gespeicherter Name -> Auto-Rejoin ohne Onboarding.
-     join() reuse't die memberId aus localStorage -> kein Member-Duplikat (Ticket 0018).
-     Kein Name / Storage-Block / Fehler -> Onboarding (Name ggf. vorbefuellt). */
-  function init(){
-    const r = urlRoom();
-    const savedName = loadName();
-    if (r && savedName){
-      $('ob-name').value = savedName;
-      $('onboarding').classList.remove('open');     // sofort ausblenden -> kein Flash
-      join().catch(() => showOnboarding());         // Fehler -> zurueck ins Onboarding
-    } else {
-      showOnboarding();
-      if (savedName) $('ob-name').value = savedName; // Teil-Linderung: letzten Namen vorbefuellen
-    }
-  }
-  init();
+  /* ---- Boot: Auth-Gate (Ticket 0024) ----
+     onAuthStateChanged ist die Quelle des Anmelde-Zustands -> sofort registrieren
+     (initial null -> Sign-in-Screen). getRedirectResult wertet einen Sign-in-Redirect
+     (iPhone) aus; der eigentliche Zustand kommt aber ueber onAuthStateChanged, daher
+     KEIN manuelles Reload/Loop. Reload bleibt angemeldet (Firebase-Persistenz). */
+  onAuthStateChanged(auth, applyAuthState);
+  getRedirectResult(auth).catch(e => showSignInError(e));
 </script>
 <!-- cp-build-badge: deploy-pipeline marker (Ticket 0015), rein additiv, pointer-events:none -->
 <div id="cp-build-badge" style="position:fixed;bottom:8px;right:8px;z-index:99999;font-size:11px;font-family:system-ui,-apple-system,sans-serif;background:rgba(20,20,20,0.7);color:#f0f0f0;padding:2px 7px;border-radius:6px;pointer-events:none;line-height:1.4;">v0.1 - 2026-06-21</div>
