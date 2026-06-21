@@ -214,6 +214,18 @@
   .frow label { font-size:16px; color:var(--label); flex-shrink:0; letter-spacing:-0.3px; }
   .frow input { flex:1; border:none; background:none; color:var(--label); font-size:16px; text-align:right; outline:none; font-family:inherit; letter-spacing:-0.3px; min-width:0; }
   .frow input::placeholder { color:#5A5A5E; }
+  /* Orts-Autocomplete (Ticket 0020). Die Basics-Gruppe darf NICHT clippen, sonst
+     schneidet .fgroup{overflow:hidden} das Dropdown ab; .frow ist bereits relativ. */
+  .loc-group { overflow:visible; }
+  .loc-frow { position:relative; }
+  .loc-ac { position:absolute; left:0; right:0; top:100%; margin-top:6px; z-index:20;
+    background:var(--card); border:0.5px solid var(--card-border); border-radius:14px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.5); max-height:240px; overflow:hidden auto; display:none; }
+  .loc-ac.open { display:block; }
+  .loc-ac-item { padding:12px 16px; font-size:15px; color:var(--label); cursor:pointer;
+    letter-spacing:-0.3px; line-height:1.3; }
+  .loc-ac-item + .loc-ac-item { border-top:0.5px solid var(--separator); }
+  .loc-ac-item:hover, .loc-ac-item:active { background:var(--card-2); }
   .fvalue { flex:1; text-align:right; color:var(--accent-text); font-size:16px; letter-spacing:-0.3px; display:flex; align-items:center; justify-content:flex-end; gap:4px; cursor:pointer; }
   .fvalue svg { width:14px; height:14px; color:#545458; }
   .switch { width:51px; height:31px; border-radius:999px; background:#39393D; position:relative; cursor:pointer; transition:background 0.25s var(--ease); flex-shrink:0; }
@@ -894,9 +906,11 @@
         </div>
       </div>
       <div class="flabel">Basics</div>
-      <div class="fgroup">
+      <div class="fgroup loc-group">
         <div class="frow"><label>Name</label><input id="cr-name" placeholder="z.B. Mallorca 2026"></div>
-        <div class="frow"><label>Ort</label><input id="cr-loc" placeholder="Wohin geht's?"></div>
+        <div class="frow loc-frow"><label>Ort</label><input id="cr-loc" placeholder="Wohin geht's?" autocomplete="off">
+          <!-- Orts-Autocomplete-Dropdown (Ticket 0020, Photon/OSM) -->
+          <div class="loc-ac" id="cr-loc-ac" role="listbox"></div></div>
       </div>
 
       <div class="flabel">Wann</div>
@@ -1158,11 +1172,18 @@
   /* ---- Event-Uebersicht aus echten Daten ---- */
   const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0114 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
   const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
-  // Ort -> Google-Maps-Link (Ticket 0006). Key-frei, rein clientseitig.
-  // href via encodeURIComponent (URL-Encoding) + esc (Attribut-Schutz); Anzeige = Ort-Name via esc.
-  function mapsHref(loc){ return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc); }
-  function mapsAnchor(rawLoc){
-    return `<a class="maps-link" href="${esc(mapsHref(rawLoc))}" target="_blank" rel="noopener noreferrer">${esc(rawLoc)}</a>`;
+  // Ort -> Google-Maps-Link (Ticket 0006/0020). Key-frei, rein clientseitig.
+  // Mit exakten Koordinaten aus der OSM/Photon-Auswahl (Ticket 0020) -> query=<lat>,<lon>
+  // (exakter Pin); ohne -> Freitext-Fallback query=<encodeURIComponent(loc)> (wie 0006).
+  // href via esc (Attribut-Schutz), Anzeige = Ort-Name via esc. query-Reihenfolge: lat,lon.
+  function coordOK(v){ return v != null && v !== '' && Number.isFinite(Number(v)); }
+  function hasCoords(lat, lon){ return coordOK(lat) && coordOK(lon); }
+  function mapsHref(loc, lat, lon){
+    if (hasCoords(lat, lon)) return 'https://www.google.com/maps/search/?api=1&query=' + Number(lat) + ',' + Number(lon);
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc);
+  }
+  function mapsAnchor(rawLoc, lat, lon){
+    return `<a class="maps-link" href="${esc(mapsHref(rawLoc, lat, lon))}" target="_blank" rel="noopener noreferrer">${esc(rawLoc)}</a>`;
   }
   const badgeTextHome = { plan:'In Planung', live:'Läuft', past:'Vorbei' };
 
@@ -1228,13 +1249,18 @@
     const mem  = eventMembers(ev);                 // "dabei" = participants (Fallback alle Members), Ticket 0017
     const going = Object.keys(mem).length;
     const { count, clabel, cd } = countdownParts(ev);
-    const locHTML  = ev.location ? `${PIN}${mapsAnchor(ev.location)}` : '';   // kein Ort -> kein Pin/Link (T4)
+    const locHTML  = ev.location ? `${PIN}${mapsAnchor(ev.location, ev.lat, ev.lon)}` : '';   // kein Ort -> kein Pin/Link (T4); coords -> exakter Pin (0020)
     const dateHTML = date ? `<span class="meta-date">${date}</span>` : '';
     const metaInner = [locHTML, dateHTML].filter(Boolean).join('<span class="dot"></span>');
     const deadline = ev.deadline
       ? `<div class="card-deadline">${CLOCK} Zusagen noch bis <b>${esc(ev.deadline)}</b></div>` : '';
+    // Koordinaten als data-Attribute mitgeben, damit der Detail-Klick (openDetail(card.dataset))
+    // denselben exakten Maps-Link baut wie die Card (0020); kein Treffer/Freitext -> leer.
+    const latAttr = hasCoords(ev.lat, ev.lon) ? Number(ev.lat) : '';
+    const lonAttr = hasCoords(ev.lat, ev.lon) ? Number(ev.lon) : '';
     return `<article class="card"
         data-id="${esc(id)}" data-title="${name}" data-loc="${loc}" data-date="${date}"
+        data-lat="${latAttr}" data-lon="${lonAttr}"
         data-count="${count}" data-clabel="${esc(clabel)}" data-going="${going}" data-status="${status}"
         data-deadline="${esc(ev.deadline||'')}" data-crew="${esc(crewAttr(mem))}">
         <div class="card-status"><span class="badge ${status}"><span class="bdot"></span>${badgeTextHome[status]}</span></div>
@@ -1338,6 +1364,7 @@
     const mem = eventMembers(ev);                  // "dabei" = participants (Fallback alle), Ticket 0017
     return {
       id, title: ev.name || 'Event', loc: ev.location || '', date: ev.dateRange || '',
+      lat: ev.lat, lon: ev.lon,                      // Koordinaten fuer den exakten Maps-Link (0020)
       count: String(count), clabel, going: String(Object.keys(mem).length),
       crew: crewAttr(mem), status: effectiveStatus(ev), deadline: ev.deadline || ''
     };
@@ -1348,7 +1375,7 @@
   // Scroll-Position zurueckspringt.
   function fillDetail(d){
     $('d-title').textContent = d.title;
-    $('d-loc').innerHTML = d.loc ? mapsAnchor(d.loc) : '';   // Ort als Maps-Link im Detail (T1)
+    $('d-loc').innerHTML = d.loc ? mapsAnchor(d.loc, d.lat, d.lon) : '';   // Ort als Maps-Link im Detail (T1); coords -> exakter Pin (0020)
     $('d-date').textContent = d.date;
     $('d-num').textContent = d.count;
     $('d-clabel').textContent = d.clabel;
@@ -1541,7 +1568,7 @@
   if (sdNav[1]) sdNav[1].addEventListener('click', () => sdShiftMonth(1));
 
   // ---- Create-Sheet: Frist + Auto-Status (ISO + Anzeige) ----
-  const crState = { deadlineISO:'', deadlineText:'', asISO:'', asText:'', asTo:'live', selected:new Set() };
+  const crState = { deadlineISO:'', deadlineText:'', asISO:'', asText:'', asTo:'live', selected:new Set(), locLat:null, locLon:null };
 
   /* ---- Teilnehmer-Picker: echte Members aus membersCache (Ticket 0016) ----
      Ersetzt die fruehere Dummy-Crew (Fake-Gruppen + Fake-Leute). Bausteine wie bei
@@ -1687,6 +1714,7 @@
   // ---- Sheet oeffnen/schliessen + Reset (jedes Oeffnen startet leer) ----
   function resetSheet() {
     $('cr-name').value = ''; $('cr-loc').value = ''; $('cr-desc').value = '';
+    crState.locLat = null; crState.locLon = null; closeLocAC();   // Orts-Auswahl/Dropdown zuruecksetzen (0020)
     $('cr-name').closest('.frow').classList.remove('invalid');
     document.querySelectorAll('.type-card').forEach(x =>
       x.classList.toggle('on', x.dataset.type === 'urlaub'));
@@ -1732,6 +1760,11 @@
     });
     $('cr-name').value = ev.name || '';
     $('cr-loc').value = ev.location || '';
+    // Koordinaten der gespeicherten Auswahl uebernehmen (0020): Bearbeiten ohne erneutes
+    // Tippen behaelt den exakten Pin; manuelles Tippen verwirft sie (input-Listener).
+    crState.locLat = coordOK(ev.lat) ? Number(ev.lat) : null;
+    crState.locLon = coordOK(ev.lon) ? Number(ev.lon) : null;
+    closeLocAC();
     $('cr-desc').value = ev.description || '';
     // Zeitraum: Start aus startDate (Jahr/Monat/Tag), Endtag aus dateRange (gleicher
     // Monat, wie der Bereichs-Picker ihn erzeugt). Kein startDate -> kein Datum.
@@ -1784,12 +1817,95 @@
   }
 
   const openSheet = () => { editId = null; resetSheet(); setSheetMode(false); sheet.classList.add('open'); backdrop.classList.add('open'); };
-  const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); editId = null; };
+  const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); editId = null; closeLocAC(); };
   document.querySelector('.add-btn').addEventListener('click', openSheet);
   backdrop.addEventListener('click', closeSheet);
   document.querySelectorAll('[data-close-sheet]').forEach(b => b.addEventListener('click', closeSheet));
   // Bearbeiten-Einstieg im Detail -> Sheet im Edit-Modus fuer das offene Event (0019)
   $('d-edit-btn').addEventListener('click', () => openEditSheet(currentDetailId));
+
+  // ---- Orts-Autocomplete via Photon/OSM (Ticket 0020) -----------------------------
+  // Key-frei, rein clientseitig. Tippen (>=3 Zeichen, debounced ~300ms) -> Vorschlaege
+  // aus Photon; Auswahl speichert Anzeigename + Koordinaten (crState.locLat/locLon), der
+  // Maps-Link nutzt dann die Koordinaten (exakter Pin). Manuelles Tippen verwirft eine
+  // zuvor gewaehlte Koordinate -> Freitext-Fallback. Alte Requests werden via
+  // AbortController abgebrochen (Race vermeiden). Vorschlaege via textContent (nie
+  // innerHTML aus API-Daten -> kein XSS). Defensiv geparst (fehlende Felder tolerieren).
+  const locInput = $('cr-loc');
+  const locAC = $('cr-loc-ac');
+  const PHOTON_MIN = 3, PHOTON_DEBOUNCE = 300;
+  let acTimer = null, acCtrl = null, acSeq = 0;
+  // Anzeigename: name (oder street + hausnummer) + city + country; fehlende Felder
+  // tolerieren, Duplikate (z.B. name == city) zusammenfassen.
+  function photonLabel(p){
+    if (!p || typeof p !== 'object') return '';
+    const primary = p.name || [p.street, p.housenumber].filter(Boolean).join(' ').trim();
+    const out = [];
+    [primary, p.city, p.country].forEach(v => {
+      v = (v == null ? '' : String(v)).trim();
+      if (v && !out.includes(v)) out.push(v);
+    });
+    return out.join(', ');
+  }
+  function closeLocAC(){ if (locAC){ locAC.classList.remove('open'); locAC.textContent = ''; } }
+  function selectLoc(label, lat, lon){
+    locInput.value = label;                          // programmatisch -> loest KEIN input-Event aus
+    crState.locLat = coordOK(lat) ? Number(lat) : null;
+    crState.locLon = coordOK(lon) ? Number(lon) : null;
+    closeLocAC();
+  }
+  function renderLocAC(features){
+    closeLocAC();
+    // Photon-geometry.coordinates = [lon, lat] -> lat=coords[1], lon=coords[0] (Reihenfolge!).
+    const list = (features || []).map(f => ({
+      label: photonLabel(f && f.properties),
+      coords: f && f.geometry && Array.isArray(f.geometry.coordinates) ? f.geometry.coordinates : null
+    })).filter(x => x.label && x.coords && coordOK(x.coords[1]) && coordOK(x.coords[0]));
+    if (!list.length){ closeLocAC(); return; }       // 0 Treffer -> kein Dropdown (kein Crash)
+    list.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'loc-ac-item';
+      row.setAttribute('role', 'option');
+      row.textContent = item.label;                  // KEIN innerHTML aus API-Daten (XSS-Schutz)
+      row.addEventListener('mousedown', e => e.preventDefault());   // Fokus/Blur nicht stoeren
+      row.addEventListener('click', () => selectLoc(item.label, item.coords[1], item.coords[0]));
+      locAC.appendChild(row);
+    });
+    locAC.classList.add('open');
+  }
+  async function runLocSearch(q){
+    const seq = ++acSeq;
+    if (acCtrl) { try { acCtrl.abort(); } catch(e){} }
+    acCtrl = new AbortController();
+    let feats = [];
+    try {
+      const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=5&lang=de';
+      const res = await fetch(url, { signal: acCtrl.signal });
+      if (!res.ok) throw new Error('photon ' + res.status);
+      const data = await res.json();
+      feats = data && Array.isArray(data.features) ? data.features : [];
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;       // veralteter Request -> ignorieren
+      if (seq === acSeq) closeLocAC();                // Netz-/API-Fehler -> kein Dropdown, kein Crash
+      return;
+    }
+    if (seq !== acSeq) return;                         // neuere Suche hat uebernommen (Race)
+    renderLocAC(feats);
+  }
+  locInput.addEventListener('input', () => {
+    crState.locLat = null; crState.locLon = null;     // Tippen verwirft die gewaehlte Koordinate
+    const q = locInput.value.trim();
+    clearTimeout(acTimer);
+    if (acCtrl) { try { acCtrl.abort(); } catch(e){} acCtrl = null; }
+    if (q.length < PHOTON_MIN){ closeLocAC(); return; }
+    acTimer = setTimeout(() => runLocSearch(q), PHOTON_DEBOUNCE);
+  });
+  // Klick ausserhalb des Ort-Felds (inkl. Dropdown) schliesst die Vorschlagsliste
+  document.addEventListener('click', e => {
+    if (!locAC.classList.contains('open')) return;
+    if (e.target.closest('.loc-frow')) return;
+    closeLocAC();
+  });
 
   // ---- Speichern: neues Event anlegen (push) ODER bestehendes updaten (update) ----
   let creating = false;
@@ -1820,6 +1936,7 @@
     Object.keys(membersCache || {}).forEach(id => { if (crState.selected.has(id)) participants[id] = true; });
     participants[state.memberId] = true;
     const r = dpRange();
+    const hasLoc = hasCoords(crState.locLat, crState.locLon);   // gewaehlte OSM-Koordinaten (0020)
     // --- Bearbeiten-Modus: Update auf DIESELBE eventId (Ticket 0019) ---
     // NUR editierbare Felder; status/createdBy/createdAt bleiben unangetastet (eigener
     // Flow 0007 / Ersteller-Daten). Optionale Felder, die jetzt AUS sind, explizit auf
@@ -1831,6 +1948,10 @@
       const updates = {
         type, name,
         location: $('cr-loc').value.trim(),
+        // Koordinaten der OSM-Auswahl (0020); kein Treffer/Freitext -> null (in RTDB entfernt) ->
+        // Maps-Link faellt sauber auf Freitext zurueck (kein "Geister"-Pin).
+        lat: hasLoc ? Number(crState.locLat) : null,
+        lon: hasLoc ? Number(crState.locLon) : null,
         dateRange: dpRangeText(),
         description: $('cr-desc').value.trim(),
         modules, participants,
@@ -1862,6 +1983,7 @@
       createdAt: serverTimestamp()
     };
     if (r) ev.startDate = dpISO(r.lo);                      // ISO-Start fuer Countdown
+    if (hasLoc) { ev.lat = Number(crState.locLat); ev.lon = Number(crState.locLon); }   // exakte OSM-Koordinaten (0020)
     // Frist: nur wenn Switch an UND ein Datum gewaehlt -> Anzeige-String + ISO (Ticket 0007)
     if (dsw.classList.contains('on') && crState.deadlineISO) {
       ev.deadline = crState.deadlineText;                  // Anzeige-String (Card/Detail)
