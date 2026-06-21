@@ -1186,6 +1186,20 @@
   function crewAttr(members){
     return Object.values(members).map(m => `${initials(m.name)}:${safeColor(m.color)}`).join(',');
   }
+  // Teilnehmer eines Events gegen membersCache aufgeloest (Name/Initialen/Farbe) ->
+  // Quelle fuer die "dabei"-Avatare + Zahl auf Card UND im Detail (Ticket 0017).
+  // participants ({ memberId: true }) wird seit 0016 pro Event gespeichert; hier nur
+  // die im aktuellen Raum vorhandenen IDs aufgeloest (kein Fremd-Key). Fallback:
+  // participants fehlt/leer (Legacy-Events vor 0016) -> alle aktuellen Raum-Members
+  // (Verhalten vor 0017), damit nichts leer/kaputt wirkt.
+  function eventMembers(ev){
+    const sel = ev && ev.participants;
+    const ids = sel ? Object.keys(sel).filter(id => sel[id]) : [];
+    if (!ids.length) return membersCache || {};            // fehlt/leer -> alle Members (Fallback)
+    const out = {};
+    ids.forEach(id => { if (membersCache && membersCache[id]) out[id] = membersCache[id]; });
+    return out;
+  }
   // Countdown-Teile aus dem Startdatum (Card + Detail nutzen dieselbe Logik). Ticket 0008.
   function countdownParts(ev){
     let count = '—', clabel = '', cd = '';
@@ -1204,7 +1218,8 @@
     const name = esc(ev.name || 'Event');
     const loc  = esc(ev.location || '');
     const date = esc(ev.dateRange || '');
-    const going = Object.keys(membersCache).length;
+    const mem  = eventMembers(ev);                 // "dabei" = participants (Fallback alle Members), Ticket 0017
+    const going = Object.keys(mem).length;
     const { count, clabel, cd } = countdownParts(ev);
     const locHTML  = ev.location ? `${PIN}${mapsAnchor(ev.location)}` : '';   // kein Ort -> kein Pin/Link (T4)
     const dateHTML = date ? `<span class="meta-date">${date}</span>` : '';
@@ -1214,12 +1229,12 @@
     return `<article class="card"
         data-id="${esc(id)}" data-title="${name}" data-loc="${loc}" data-date="${date}"
         data-count="${count}" data-clabel="${esc(clabel)}" data-going="${going}" data-status="${status}"
-        data-deadline="${esc(ev.deadline||'')}" data-crew="${esc(crewAttr(membersCache))}">
+        data-deadline="${esc(ev.deadline||'')}" data-crew="${esc(crewAttr(mem))}">
         <div class="card-status"><span class="badge ${status}"><span class="bdot"></span>${badgeTextHome[status]}</span></div>
         <div class="card-top"><div class="card-title">${name}</div>${cd}</div>
         <div class="meta">${metaInner}</div>
         <div class="card-bottom">
-          <div class="avatars">${avatarsHTML(membersCache, 4)}</div>
+          <div class="avatars">${avatarsHTML(mem, 4)}</div>
           <div class="going"><b>${going}</b> dabei</div>
         </div>
         ${deadline}
@@ -1798,10 +1813,11 @@
   function openEventById(id){
     const e = lastEvents[id]; if (!e) return;
     const { count, clabel } = countdownParts(e);
+    const mem = eventMembers(e);                  // Detail-"dabei" aus participants (Fallback alle), Ticket 0017
     openDetail({
       id, title: e.name || 'Event', loc: e.location || '', date: e.dateRange || '',
-      count: String(count), clabel, going: String(Object.keys(membersCache).length),
-      crew: crewAttr(membersCache), status: effectiveStatus(e), deadline: e.deadline || ''
+      count: String(count), clabel, going: String(Object.keys(mem).length),
+      crew: crewAttr(mem), status: effectiveStatus(e), deadline: e.deadline || ''
     });
   }
 
