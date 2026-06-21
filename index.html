@@ -92,6 +92,7 @@
   .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
   .nav-btn svg { width:20px; height:20px; }
   .nav-mid { font-size:16px; font-weight:600; letter-spacing:-0.3px; }
+  .nav-right { display:flex; align-items:center; gap:4px; }
   .nav-icon { width:36px; height:36px; border-radius:50%; background:rgba(118,118,128,0.24); border:none; color:var(--label); cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .nav-icon svg { width:18px; height:18px; }
   .nav-spacer { width:44px; }
@@ -487,7 +488,10 @@
   <div class="screen" id="detail">
     <div class="navbar">
       <button class="nav-btn" data-close="detail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Zurück</button>
-      <button class="nav-icon" aria-label="Teilen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg></button>
+      <div class="nav-right">
+        <button class="nav-btn" id="d-edit-btn" type="button">Bearbeiten</button>
+        <button class="nav-icon" aria-label="Teilen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg></button>
+      </div>
     </div>
     <div class="hero">
       <div class="hero-inner">
@@ -1327,11 +1331,43 @@
     if (status === 'plan' && deadline){ rsvp.style.display = ''; $('d-deadline').textContent = deadline; }
     else rsvp.style.display = 'none';
   }
-  // Offenes Detail live nachziehen (eigene oder fremde Status-Aenderung, Auto-Status)
+  // Detail-Daten aus einem Event ableiten (eine Quelle fuer Card-Klick, Kalender-
+  // Klick und Live-Refresh). Identische Form wie das frueher inline gebaute Objekt.
+  function eventDetailData(id, ev){
+    const { count, clabel } = countdownParts(ev);
+    const mem = eventMembers(ev);                  // "dabei" = participants (Fallback alle), Ticket 0017
+    return {
+      id, title: ev.name || 'Event', loc: ev.location || '', date: ev.dateRange || '',
+      count: String(count), clabel, going: String(Object.keys(mem).length),
+      crew: crewAttr(mem), status: effectiveStatus(ev), deadline: ev.deadline || ''
+    };
+  }
+  // Detail-Inhalt rendern (ohne Scroll/Open zu beruehren) -- von openDetail UND vom
+  // Live-Refresh genutzt, damit Edits (Name/Ort/Datum/Module/Teilnehmer, Ticket 0019)
+  // und Status-Aenderungen (0007) im offenen Detail live erscheinen, ohne dass die
+  // Scroll-Position zurueckspringt.
+  function fillDetail(d){
+    $('d-title').textContent = d.title;
+    $('d-loc').innerHTML = d.loc ? mapsAnchor(d.loc) : '';   // Ort als Maps-Link im Detail (T1)
+    $('d-date').textContent = d.date;
+    $('d-num').textContent = d.count;
+    $('d-clabel').textContent = d.clabel;
+    $('d-going').textContent = d.going;
+    // Modul-Anzeige folgt der Auswahl des Events (Ticket 0018, Bug A)
+    applyDetailModules(d.id && lastEvents[d.id] ? lastEvents[d.id].modules : null);
+    // full crew, no "+N"
+    $('d-avatars').innerHTML = (d.crew || '').split(',').filter(Boolean).map(p => {
+      const [ini, col] = p.split(':');
+      return `<div class="avatar" style="background:#${col}">${ini}</div>`;
+    }).join('');
+    // Badge, Status-Pillen und RSVP-Block aus dem (effektiven) Status rendern.
+    renderDetailStatus(d.status, d.deadline);
+  }
+  // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
     if (!detail.classList.contains('open') || !currentDetailId) return;
     const ev = lastEvents[currentDetailId]; if (!ev) return;
-    renderDetailStatus(effectiveStatus(ev), ev.deadline);
+    fillDetail(eventDetailData(currentDetailId, ev));      // alle Felder live, kein Scroll-Reset
   }
 
   // Detail-Module an die beim Anlegen gewaehlten Toggles koppeln (Ticket 0018, Bug A).
@@ -1349,28 +1385,12 @@
     });
   }
 
-  // Detail oeffnen (dynamische Cards -> via Delegation, s. Bootstrap)
+  // Detail oeffnen (dynamische Cards -> via Delegation, s. Bootstrap). d kommt vom
+  // Card-Dataset (cardHTML) oder aus eventDetailData -- gleiche Feldnamen; data-status
+  // der Card ist bereits der effektive Status (cardHTML -> effectiveStatus).
   function openDetail(d){
-    $('d-title').textContent = d.title;
-    $('d-loc').innerHTML = d.loc ? mapsAnchor(d.loc) : '';   // Ort als Maps-Link im Detail (T1)
-    $('d-date').textContent = d.date;
-    $('d-num').textContent = d.count;
-    $('d-clabel').textContent = d.clabel;
-    $('d-going').textContent = d.going;
-    currentDetailId = d.id || null;   // fuer die Status-Steuerung (Ticket 0007)
-    // Modul-Anzeige folgt der Auswahl des Events (Ticket 0018, Bug A)
-    applyDetailModules(d.id && lastEvents[d.id] ? lastEvents[d.id].modules : null);
-
-    // full crew, no "+N"
-    $('d-avatars').innerHTML = (d.crew || '').split(',').filter(Boolean).map(p => {
-      const [ini, col] = p.split(':');
-      return `<div class="avatar" style="background:#${col}">${ini}</div>`;
-    }).join('');
-
-    // Badge, Status-Pillen und RSVP-Block aus dem (effektiven) Status der Card rendern.
-    // data-status der Card ist bereits der effektive Status (cardHTML -> effectiveStatus).
-    renderDetailStatus(d.status, d.deadline);
-
+    currentDetailId = d.id || null;   // fuer Status-Steuerung (0007) + Bearbeiten (0019)
+    fillDetail(d);
     detail.scrollTop = 0; detail.classList.add('open');
   }
   // Event-Status im Detail aendern (Ticket 0007). Schreibt nur gueltige Werte nach
@@ -1686,13 +1706,92 @@
     crState.selected = new Set(Object.keys(membersCache || {}).filter(id => id !== state.memberId));
     renderInvited();
   }
-  const openSheet = () => { resetSheet(); sheet.classList.add('open'); backdrop.classList.add('open'); };
-  const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); };
+  // ---- Bearbeiten-Modus: dasselbe Sheet als Edit wiederverwenden (Ticket 0019) ----
+  // editId === null -> Anlegen (push neues Event); gesetzt -> Update auf DIESE eventId.
+  let editId = null;
+  const SHEET_LABELS = { create: { title: 'Neues Event', btn: 'Erstellen' },
+                         edit:   { title: 'Event bearbeiten', btn: 'Speichern' } };
+  function setSheetMode(editing){
+    const L = editing ? SHEET_LABELS.edit : SHEET_LABELS.create;
+    const t = sheet.querySelector('.sheet-title'); if (t) t.textContent = L.title;
+    $('sheet-create-btn').textContent = L.btn;
+  }
+  // Anzeige-String aus ISO bauen (Auto-Status speichert nur ISO; gleiche Form wie sdText()).
+  function isoText(iso){ const s = sdParseISO(iso); return s ? `${s.d}. ${MONTHS_DE[s.m]}` : ''; }
+  // Sheet mit den aktuellen Event-Werten vorbefuellen (alle Feldgruppen). Baut auf dem
+  // resetSheet()-Default auf und ueberschreibt dann gezielt -- Reihenfolge: openEditSheet
+  // ruft erst resetSheet(), dann applyEventToSheet().
+  function applyEventToSheet(ev){
+    const type = ev.type === 'treffen' ? 'treffen' : 'urlaub';
+    document.querySelectorAll('.type-card').forEach(x => x.classList.toggle('on', x.dataset.type === type));
+    renderModules(type);                                   // Default-Toggles fuer den Typ
+    const mods = (ev.modules && typeof ev.modules === 'object') ? ev.modules : null;
+    if (mods) document.querySelectorAll('#mt-group .mt-row').forEach(row => {   // exakt auf Event-Stand
+      const label = (row.querySelector('.mt-label').textContent || '').trim();
+      row.querySelector('.switch').classList.toggle('on', mods[label] === true);
+    });
+    $('cr-name').value = ev.name || '';
+    $('cr-loc').value = ev.location || '';
+    $('cr-desc').value = ev.description || '';
+    // Zeitraum: Start aus startDate (Jahr/Monat/Tag), Endtag aus dateRange (gleicher
+    // Monat, wie der Bereichs-Picker ihn erzeugt). Kein startDate -> kein Datum.
+    dpState.start = null; dpState.end = null;
+    const sd = sdParseISO(ev.startDate);
+    if (sd){
+      dpState.year = sd.y; dpState.month = sd.m; dpState.start = sd.d;
+      const nums = String(ev.dateRange || '').match(/\d+/g);
+      if (nums && nums.length >= 2){ const hi = +nums[nums.length-1]; if (hi !== sd.d) dpState.end = hi; }
+    }
+    renderDatepick();
+    // Frist (0007): vorhanden -> Switch an + Werte; sonst aus.
+    if (ev.deadlineISO){
+      crState.deadlineISO = ev.deadlineISO; crState.deadlineText = ev.deadline || isoText(ev.deadlineISO);
+      dsw.classList.add('on'); drow.style.display = '';
+      $('cr-deadline').innerHTML = esc(crState.deadlineText) + ' ' + CHEVRON;
+    } else {
+      crState.deadlineISO = ''; crState.deadlineText = '';
+      dsw.classList.remove('on'); drow.style.display = 'none';
+      $('cr-deadline').innerHTML = 'Datum wählen ' + CHEVRON;
+    }
+    // Auto-Status (0007): vorhanden -> Switch an + Datum/Ziel; sonst aus.
+    if (ev.autoStatusDate && ['live','past'].includes(ev.autoStatusTo)){
+      crState.asISO = ev.autoStatusDate; crState.asText = isoText(ev.autoStatusDate); crState.asTo = ev.autoStatusTo;
+      asw.classList.add('on'); asDateRow.style.display = ''; asToRow.style.display = '';
+      $('cr-asdate').innerHTML = esc(crState.asText) + ' ' + CHEVRON;
+      asTo.dataset.to = ev.autoStatusTo; asTo.innerHTML = (ev.autoStatusTo === 'live' ? 'Läuft ' : 'Vorbei ') + CHEVRON;
+    } else {
+      crState.asISO = ''; crState.asText = ''; crState.asTo = 'live';
+      asw.classList.remove('on'); asDateRow.style.display = 'none'; asToRow.style.display = 'none';
+      asTo.dataset.to = 'live'; asTo.innerHTML = 'Läuft ' + CHEVRON;
+    }
+    // Teilnehmer: aus participants OHNE self (self ist Host, nicht im Picker -- 0018).
+    // Leer/fehlt (Legacy) -> Default alle anderen Members (wie resetSheet / 0017-Fallback).
+    const pp = (ev.participants && typeof ev.participants === 'object')
+      ? Object.keys(ev.participants).filter(id => ev.participants[id]) : [];
+    crState.selected = pp.length
+      ? new Set(pp.filter(id => id !== state.memberId))
+      : new Set(Object.keys(membersCache || {}).filter(id => id !== state.memberId));
+    renderInvited();
+  }
+  function openEditSheet(id){
+    const ev = id && lastEvents[id];
+    if (!ev){ toast('Event nicht gefunden'); return; }
+    resetSheet();                                          // sauberer Default-Stand
+    editId = id;
+    applyEventToSheet(ev);                                 // dann mit Event-Werten ueberschreiben
+    setSheetMode(true);
+    sheet.classList.add('open'); backdrop.classList.add('open');
+  }
+
+  const openSheet = () => { editId = null; resetSheet(); setSheetMode(false); sheet.classList.add('open'); backdrop.classList.add('open'); };
+  const closeSheet = () => { sheet.classList.remove('open'); backdrop.classList.remove('open'); editId = null; };
   document.querySelector('.add-btn').addEventListener('click', openSheet);
   backdrop.addEventListener('click', closeSheet);
   document.querySelectorAll('[data-close-sheet]').forEach(b => b.addEventListener('click', closeSheet));
+  // Bearbeiten-Einstieg im Detail -> Sheet im Edit-Modus fuer das offene Event (0019)
+  $('d-edit-btn').addEventListener('click', () => openEditSheet(currentDetailId));
 
-  // ---- "Erstellen": neues Event nach RTDB schreiben ----
+  // ---- Speichern: neues Event anlegen (push) ODER bestehendes updaten (update) ----
   let creating = false;
   async function createEvent() {
     if (creating) return;                                  // Doppel-Submit abfangen
@@ -1720,6 +1819,36 @@
     const participants = {};
     Object.keys(membersCache || {}).forEach(id => { if (crState.selected.has(id)) participants[id] = true; });
     participants[state.memberId] = true;
+    const r = dpRange();
+    // --- Bearbeiten-Modus: Update auf DIESELBE eventId (Ticket 0019) ---
+    // NUR editierbare Felder; status/createdBy/createdAt bleiben unangetastet (eigener
+    // Flow 0007 / Ersteller-Daten). Optionale Felder, die jetzt AUS sind, explizit auf
+    // null -> in RTDB entfernt (Frist/Auto-Status abgeschaltet, Datum geloescht) ->
+    // Card/Detail bleiben konsistent (Modul-Anzeige 0018, Avatare 0017).
+    if (editId){
+      const dlOn = dsw.classList.contains('on') && crState.deadlineISO;
+      const asOn = asw.classList.contains('on') && crState.asISO;
+      const updates = {
+        type, name,
+        location: $('cr-loc').value.trim(),
+        dateRange: dpRangeText(),
+        description: $('cr-desc').value.trim(),
+        modules, participants,
+        startDate:      r    ? dpISO(r.lo)          : null,
+        deadline:       dlOn ? crState.deadlineText : null,
+        deadlineISO:    dlOn ? crState.deadlineISO  : null,
+        autoStatusDate: asOn ? crState.asISO        : null,
+        autoStatusTo:   asOn ? crState.asTo         : null
+      };
+      creating = true; $('sheet-create-btn').disabled = true;
+      try {
+        await update(ref(db, `rooms/${state.room}/events/${editId}`), updates);
+        closeSheet();                 // Detail darunter zieht via Listener live nach (refreshOpenDetail)
+      } finally {
+        creating = false; $('sheet-create-btn').disabled = false; editId = null;
+      }
+      return;
+    }
     const ev = {
       type,
       name,
@@ -1732,7 +1861,6 @@
       createdBy: state.memberId,
       createdAt: serverTimestamp()
     };
-    const r = dpRange();
     if (r) ev.startDate = dpISO(r.lo);                      // ISO-Start fuer Countdown
     // Frist: nur wenn Switch an UND ein Datum gewaehlt -> Anzeige-String + ISO (Ticket 0007)
     if (dsw.classList.contains('on') && crState.deadlineISO) {
@@ -1837,13 +1965,7 @@
   // Termin-Zeile -> Detail (gleicher Datensatz, den cardHTML in die data-* schreibt)
   function openEventById(id){
     const e = lastEvents[id]; if (!e) return;
-    const { count, clabel } = countdownParts(e);
-    const mem = eventMembers(e);                  // Detail-"dabei" aus participants (Fallback alle), Ticket 0017
-    openDetail({
-      id, title: e.name || 'Event', loc: e.location || '', date: e.dateRange || '',
-      count: String(count), clabel, going: String(Object.keys(mem).length),
-      crew: crewAttr(mem), status: effectiveStatus(e), deadline: e.deadline || ''
-    });
+    openDetail(eventDetailData(id, e));
   }
 
   // Tag-Klick toggelt die EIGENE Abwesenheit; optimistisch lokal, Listener reconciled.
