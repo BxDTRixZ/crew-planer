@@ -137,6 +137,24 @@
   .mod-title { font-size:16px; font-weight:500; letter-spacing:-0.3px; }
   .mod-sub { font-size:13px; color:var(--label-2); margin-top:1px; letter-spacing:-0.1px; }
   .chevron { color:#545458; width:14px; height:14px; flex-shrink:0; }
+  /* Event loeschen (Ticket 0022): destruktive Aktion unten im Detail, klar abgesetzt
+     von den haeufig getippten Status-/RSVP-Pillen oben -> kein Fehltipp. */
+  .detail-danger { margin:26px 18px 0; }
+  .danger-action { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; border-radius:var(--r-pill); background:rgba(255,69,58,0.12); border:0.5px solid rgba(255,69,58,0.30); color:var(--red); font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
+  .danger-action:active { transform:scale(0.97); }
+  .danger-action svg { width:18px; height:18px; }
+  /* Pflicht-Bestaetigung (Ticket 0022): zentriertes Confirm-Overlay. Abbrechen = sichere
+     Default-Aktion (auch Klick auf den Hintergrund). z-index ueber Detail/Sheets/Toast. */
+  .confirm-overlay { position:absolute; inset:0; z-index:850; display:flex; align-items:center; justify-content:center; padding:32px; background:rgba(0,0,0,0.6); opacity:0; pointer-events:none; transition:opacity 0.22s var(--ease); }
+  .confirm-overlay.open { opacity:1; pointer-events:auto; }
+  .confirm-box { width:100%; max-width:320px; background:#1C1C1E; border:0.5px solid var(--separator); border-radius:18px; padding:22px 20px 16px; text-align:center; transform:scale(0.94); transition:transform 0.22s var(--ease); }
+  .confirm-overlay.open .confirm-box { transform:scale(1); }
+  .confirm-title { font-size:18px; font-weight:600; letter-spacing:-0.3px; }
+  .confirm-sub { font-size:14px; color:var(--label-2); margin-top:7px; line-height:1.4; letter-spacing:-0.1px; }
+  .confirm-actions { display:flex; gap:10px; margin-top:20px; }
+  .confirm-cancel, .confirm-ok { flex:1; padding:13px; border-radius:var(--r-pill); border:none; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; }
+  .confirm-cancel { background:var(--card-2); color:var(--label); }
+  .confirm-ok { background:var(--red); color:#fff; }
   .bottom-pad { height:40px; }
 
   /* TERMIN */
@@ -578,7 +596,27 @@
         <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
       </div>
     </div>
+
+    <!-- Event loeschen (Ticket 0022): endgueltige Aktion, bewusst unten + abgesetzt -->
+    <div class="detail-danger">
+      <button class="danger-action" id="d-delete-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/></svg>
+        Event löschen
+      </button>
+    </div>
     <div class="bottom-pad"></div>
+  </div>
+
+  <!-- BESTAETIGUNG LOESCHEN (Ticket 0022) -- Abbrechen ist die sichere Default-Aktion -->
+  <div class="confirm-overlay" id="confirm-del" aria-hidden="true">
+    <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-del-title">
+      <div class="confirm-title" id="confirm-del-title">Event wirklich löschen?</div>
+      <div class="confirm-sub">Das lässt sich nicht rückgängig machen.</div>
+      <div class="confirm-actions">
+        <button class="confirm-cancel" id="confirm-del-cancel" type="button">Abbrechen</button>
+        <button class="confirm-ok" id="confirm-del-ok" type="button">Löschen</button>
+      </div>
+    </div>
   </div>
 
   <!-- TERMIN -->
@@ -1441,6 +1479,42 @@
 
   // Test-Belege (nur localhost/file://, wie window.__cp.inviteLink) -- Ticket 0006/0007
   if (DEBUG) Object.assign(window.__cp, { renderEvents, cardHTML, openDetail, mapsHref, effectiveStatus, setEventStatus, refreshOpenDetail });
+
+  // ---- Event loeschen mit Pflicht-Bestaetigung (Ticket 0022) ----------------------
+  // Loeschen ist ENDGUELTIG -> Klick auf "Event loeschen" oeffnet erst einen Dialog
+  // (Abbrechen/Loeschen). Abbrechen (auch Klick auf den Overlay-Hintergrund) ist die
+  // sichere Default-Aktion. Bestaetigt -> remove() auf GENAU die events/{id}-Ref; andere
+  // Events bleiben unberuehrt. Detail schliesst, currentDetailId wird VOR remove
+  // zurueckgesetzt (Listener-Guard: refreshOpenDetail greift dann nicht mehr auf das
+  // geloeschte Event zu). Optimistisch lokal entfernen -> Card weg ohne Reload; der
+  // onValue-Listener reconciled danach auf den RTDB-Stand.
+  const confirmDel = $('confirm-del');
+  function openDeleteConfirm(){
+    if (!currentDetailId) return;                 // ohne offenes Event nichts zu loeschen
+    confirmDel.classList.add('open');
+    confirmDel.setAttribute('aria-hidden', 'false');
+  }
+  function closeDeleteConfirm(){
+    confirmDel.classList.remove('open');
+    confirmDel.setAttribute('aria-hidden', 'true');
+  }
+  async function deleteCurrentEvent(){
+    const id = currentDetailId;
+    closeDeleteConfirm();
+    if (!state.room || !id) return;               // ohne Raum/Event kein Schreiben
+    currentDetailId = null;                        // Listener-Guard: VOR remove zuruecksetzen
+    detail.classList.remove('open');               // Detail sauber schliessen
+    if (lastEvents[id]){ delete lastEvents[id]; renderEvents(lastEvents); }  // Card sofort weg
+    try {
+      await remove(ref(db, `rooms/${state.room}/events/${id}`));
+    } catch(e){ /* Schreibfehler -> der Live-Listener korrigiert auf den RTDB-Stand */ }
+  }
+  $('d-delete-btn').addEventListener('click', openDeleteConfirm);
+  $('confirm-del-cancel').addEventListener('click', closeDeleteConfirm);
+  $('confirm-del-ok').addEventListener('click', deleteCurrentEvent);
+  // Klick auf den Overlay-Hintergrund (nicht die Box) = Abbrechen (sichere Default)
+  confirmDel.addEventListener('click', e => { if (e.target === confirmDel) closeDeleteConfirm(); });
+  if (DEBUG) window.__cp.getDetailId = () => currentDetailId;   // Test-Beleg Listener-Guard
 
   document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => { const s = $(el.dataset.open); s.scrollTop = 0; s.classList.add('open'); }));
   document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => $(el.dataset.close).classList.remove('open')));
