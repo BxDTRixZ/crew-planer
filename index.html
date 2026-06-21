@@ -1304,20 +1304,27 @@
   }
   function hideSignInError(){ const el = $('signin-error'); if (el) el.classList.remove('show'); }
 
-  // Google-Sign-in: mobil-robust -> Redirect bevorzugt (iPhone-Browser). Scheitert der
-  // Redirect, Popup als Fallback. getRedirectResult wird beim Boot ausgewertet. Persistenz
-  // lokal -> Reload bleibt angemeldet.
+  // Google-Sign-in: Popup ist der PRIMAERE Weg (Ticket 0025). Auf iOS-Safari verliert
+  // signInWithRedirect die Sitzung, weil App-Origin (crew-planer.netlify.app) und authDomain
+  // (crew-planer.firebaseapp.com) verschiedene Domains sind und ITP/Storage-Partitioning den
+  // Cross-Domain-Speicher trennt -> getRedirectResult/onAuthStateChanged bleiben leer ->
+  // stiller Bounce zurueck zum Anmelde-Screen. Popup liefert das Ergebnis per postMessage an
+  // den Opener zurueck (kein Cross-Domain-Storage) und ist durch die Button-User-Gesture
+  // erlaubt -> auf iOS zuverlaessig. Nur wenn Popup nicht moeglich ist (geblockt / Methode
+  // wirft) -> signInWithRedirect als LETZTER Fallback (getRedirectResult faengt den Rueckweg
+  // beim Boot ab). Scheitert auch das -> klare Fehlermeldung statt stillem Bounce.
+  // Persistenz lokal -> Reload bleibt angemeldet.
   async function startSignIn(){
     const btn = $('signin-btn'); if (btn) btn.disabled = true;
     hideSignInError();
     try { await setPersistence(auth, browserLocalPersistence); } catch(e){}
     try {
-      await signInWithRedirect(auth, provider);       // navigiert weg -> Code danach laeuft real nicht
+      await signInWithPopup(auth, provider);          // PRIMAER: Popup -> onAuthStateChanged treibt die UI in die App
     } catch(e){
       try {
-        await signInWithPopup(auth, provider);        // Fallback: onAuthStateChanged treibt die UI
+        await signInWithRedirect(auth, provider);     // Fallback: navigiert weg -> getRedirectResult beim Boot
       } catch(e2){
-        showSignInError(e2);
+        showSignInError(e2);                          // Popup UND Redirect gescheitert -> sichtbare Fehlermeldung
         if (btn) btn.disabled = false;
       }
     }
