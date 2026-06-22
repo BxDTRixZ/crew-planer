@@ -90,7 +90,7 @@
   .screen > * { flex-shrink:0; }
   #detail { z-index:100; }
   #termin, #kosten, #reiseplan, #packliste, #voting, #flug, #buchungen, #treffpunkt { z-index:200; }
-  #datepick, #grouppick, #sdpick { z-index:400; }
+  #datepick, #grouppick, #sdpick, #rp-edit { z-index:400; }
   .navbar { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; min-height:52px; background:rgba(0,0,0,0.55); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); }
   .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
   .nav-btn svg { width:20px; height:20px; }
@@ -355,6 +355,17 @@
   .stop-name { font-size:16px; font-weight:600; letter-spacing:-0.3px; }
   .stop-sub { font-size:13px; color:var(--label-2); margin-top:2px; letter-spacing:-0.1px; }
   .stop-time { font-size:13px; color:var(--accent-text); font-weight:600; flex-shrink:0; }
+  /* reiseplan -- echte, live-synchronisierte Stationen (Ticket 0035) */
+  .stop-body { cursor:pointer; }
+  .stop-sub .maps-link { color:var(--accent-text); }
+  .stop-meta { display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
+  .stop-actions { display:flex; align-items:center; gap:4px; }
+  .stop-btn { width:28px; height:28px; border:none; border-radius:8px; background:var(--card-2); color:var(--label-2); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .stop-btn svg { width:15px; height:15px; }
+  .stop-btn:active { transform:scale(0.92); }
+  .stop-btn:disabled { opacity:0.32; cursor:default; }
+  .stop-btn.rp-del { color:var(--red); }
+  .rp-empty { color:var(--label-2); font-size:14px; text-align:center; padding:26px 22px; line-height:1.5; }
   /* packliste */
   .progress-head { padding:4px 22px 0; }
   .ph-count { font-size:15px; color:var(--label-2); letter-spacing:-0.2px; }
@@ -933,29 +944,32 @@
       <button class="nav-btn" data-close="reiseplan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
       <div class="nav-mid">Reiseplan</div><div class="nav-spacer"></div>
     </div>
-    <div class="section-label">Unterkunft</div>
-    <div class="stop">
-      <div class="stop-icon" style="background:#FF9500"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
-      <div class="stop-body"><div class="stop-name">Hotel Sol Beach</div><div class="stop-sub">Playa de Palma · Check-in 15:00</div></div>
-      <div class="stop-time">12.7.</div>
+    <!-- ECHTER Reiseplan (Ticket 0035): geordnete Stationsliste. Inhalt kommt aus
+         rooms/{room}/events/{id}/reiseplan (renderReiseplan). Stationen = Titel + Ort
+         (via geteiltem Photon-Picker 0020/0021) + optional Zeit/Notiz; Reihenfolge ueber
+         das order-Feld (hoch/runter). -->
+    <div class="intro">Plant die Stationen eurer Reise: Unterkunft, Programm, Treffpunkte. Jede Station kann einen Ort (mit Karten-Link), eine Zeit und eine Notiz haben.</div>
+    <div id="rp-list"></div>
+    <div class="rp-empty" id="rp-empty">Noch keine Stationen. Tippe unten auf „Station hinzufügen“, um die erste anzulegen.</div>
+    <button class="wide-action" id="rp-add-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Station hinzufügen</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- REISEPLAN: Station anlegen/bearbeiten (Ticket 0035) -- Ort via geteiltem Photon-Picker -->
+  <div class="screen" id="rp-edit">
+    <div class="navbar">
+      <button class="nav-cancel" id="rp-edit-cancel" type="button">Abbrechen</button>
+      <div class="nav-mid" id="rp-edit-title">Station</div>
+      <button class="nav-done" id="rp-save-btn" type="button">Speichern</button>
     </div>
-    <div class="section-label">Programm</div>
-    <div class="stop">
-      <div class="stop-icon" style="background:#00C7BE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 18c2 0 2-1.5 4-1.5S10 18 12 18s2-1.5 4-1.5 2 1.5 4 1.5"/><path d="M2 13c2 0 2-1.5 4-1.5S10 13 12 13s2-1.5 4-1.5 2 1.5 4 1.5"/><circle cx="12" cy="6" r="2"/></svg></div>
-      <div class="stop-body"><div class="stop-name">Strandtag Es Trenc</div><div class="stop-sub">Naturstrand im Süden</div></div>
-      <div class="stop-time">Tag 2</div>
+    <div class="section-label">Station</div>
+    <div class="fgroup loc-group">
+      <div class="frow"><label>Titel</label><input id="rp-title" placeholder="z.B. Hotel Sol Beach" maxlength="80" autocomplete="off"></div>
+      <div class="frow loc-frow"><label>Ort</label><input id="rp-loc" placeholder="Ort suchen (optional)" autocomplete="off">
+        <div class="loc-ac" id="rp-loc-ac" role="listbox"></div></div>
+      <div class="frow"><label>Zeit</label><input id="rp-when" placeholder="z.B. 12.7. · 15:00" maxlength="40" autocomplete="off"></div>
+      <div class="frow"><label>Notiz</label><input id="rp-note" placeholder="optional" maxlength="120" autocomplete="off"></div>
     </div>
-    <div class="stop">
-      <div class="stop-icon" style="background:#007AFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18l2-6h14l2 6"/><path d="M5 18a2 2 0 104 0M15 18a2 2 0 104 0"/><path d="M9 12V6h4l3 6"/></svg></div>
-      <div class="stop-body"><div class="stop-name">Bootstour Caló des Moro</div><div class="stop-sub">Abfahrt Hafen 10:00</div></div>
-      <div class="stop-time">Tag 3</div>
-    </div>
-    <div class="stop">
-      <div class="stop-icon" style="background:#AF52DE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-5h6v5"/></svg></div>
-      <div class="stop-body"><div class="stop-name">Altstadt Palma</div><div class="stop-sub">Kathedrale & Tapas</div></div>
-      <div class="stop-time">Tag 4</div>
-    </div>
-    <button class="wide-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Station hinzufügen</button>
     <div class="bottom-pad"></div>
   </div>
 
@@ -2017,6 +2031,8 @@
     updateDeleteVisibility(d.id);
     // Termin-Findung-Subtitle live aus dem Event-Cache (Ticket 0034).
     updateTerminSubtitle(d.id);
+    // Reiseplan-Subtitle live aus dem Event-Cache (Ticket 0035).
+    updateReiseplanSubtitle(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -3907,6 +3923,236 @@
       () => { tpLat = null; tpLon = null; });
   }
   if (DEBUG) Object.assign(window.__cp, { openTreffpunkt, renderTreffpunkt, saveTreffpunkt });
+
+  // ---- Reiseplan-Modul (Ticket 0035): geordnete Stationsliste pro Event ----------------
+  // Speicher: rooms/{room}/events/{id}/reiseplan/{stopId} =
+  //   { title, location?, lat?, lon?, datetime?, note?, order, createdBy, createdAt }.
+  // Liegt UNTER events/{id} -> P6-Rules (events member-write/read) decken es ab; KEINE
+  // Rules-Aenderung. Ort via dem GETEILTEN Photon-Picker (0020/0021, attachPhotonAC) -> der
+  // Event-Orts-Picker bleibt UNVERAENDERT. Maps-Link wie Event-Ort (mapsAnchor). XSS: Titel/
+  // Zeit/Notiz via textContent/DOM-Bau (kein innerHTML aus Daten), Ort via mapsAnchor (esc).
+  // Reihenfolge: order-Feld (manuell, hoch/runter), stabil ueber createdAt/Key.
+  const rpScreen = $('reiseplan');
+  const rpEditScreen = $('rp-edit');
+  let rpUnsub = null;            // aktiver onValue-Detacher
+  let rpData = {};               // letzter RTDB-Stand { stopId: {...} }
+  let rpEventId = null;          // Event, dessen Reiseplan gerade offen ist
+  let rpEditId = null;           // im Editor bearbeitete Station (null = neue Station)
+  let rpLat = null, rpLon = null;// im Editor gewaehlte Koordinaten (Photon-Auswahl)
+
+  function rpBaseRef(){
+    return (state.room && rpEventId)
+      ? ref(db, `rooms/${state.room}/events/${rpEventId}/reiseplan`) : null;
+  }
+  function rpStopRef(stopId){
+    return (state.room && rpEventId && stopId)
+      ? ref(db, `rooms/${state.room}/events/${rpEventId}/reiseplan/${stopId}`) : null;
+  }
+  function openReiseplan(){
+    rpEventId = currentDetailId;                       // an das offene Event koppeln (0007/0019)
+    if (rpUnsub){ rpUnsub(); rpUnsub = null; }         // evtl. altes Abo zuerst loesen
+    const r = rpBaseRef();
+    if (!r){ rpData = {}; renderReiseplan(); return; }
+    rpUnsub = onValue(r, snap => { rpData = snap.val() || {}; renderReiseplan(); });
+  }
+  function closeReiseplan(){
+    if (rpUnsub){ rpUnsub(); rpUnsub = null; }
+    rpEventId = null;
+  }
+  // Stationen sortiert: order aufsteigend, dann createdAt, dann Key (stabil; Legacy ohne
+  // order faellt ans Ende und tie-breakt ueber createdAt).
+  function rpSortedIds(data){
+    const stops = (data && typeof data === 'object') ? data : {};
+    return Object.keys(stops).sort((a, b) => {
+      const oa = Number(stops[a] && stops[a].order), ob = Number(stops[b] && stops[b].order);
+      const na = Number.isFinite(oa) ? oa : 1e9, nb = Number.isFinite(ob) ? ob : 1e9;
+      if (na !== nb) return na - nb;
+      const ca = (stops[a] && +stops[a].createdAt) || 0, cb = (stops[b] && +stops[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
+    });
+  }
+  // Naechster order-Wert beim Anlegen: max(existing)+1 -> neue Station haengt hinten an.
+  function rpNextOrder(data){
+    const stops = (data && typeof data === 'object') ? data : {};
+    let max = -1;
+    Object.keys(stops).forEach(k => { const o = Number(stops[k] && stops[k].order); if (Number.isFinite(o) && o > max) max = o; });
+    return max + 1;
+  }
+  function renderReiseplan(){
+    const list = $('rp-list'), empty = $('rp-empty');
+    if (!list) return;
+    const ids = rpSortedIds(rpData);
+    list.innerHTML = '';                               // kein innerHTML aus Daten -> DOM-Bau pro Station
+    if (!ids.length){
+      if (empty) empty.style.display = '';
+      list.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.style.display = '';
+    ids.forEach((id, i) => list.appendChild(buildRpStop(id, rpData[id] || {}, i, ids.length)));
+  }
+  function buildRpStop(id, stop, idx, total){
+    const loc = (stop.location || '').trim();
+    const when = (stop.datetime || '').trim();
+    const note = (stop.note || '').trim();
+    const row = document.createElement('div');
+    row.className = 'stop'; row.dataset.id = id;
+
+    // Icon (fester Karten-Pin -- visuell konsistent, kein per-Typ-Mapping noetig)
+    const icon = document.createElement('div');
+    icon.className = 'stop-icon'; icon.style.background = 'var(--accent)';
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+    row.appendChild(icon);
+
+    // Body (klickbar -> bearbeiten): Titel + (Ort als Maps-Link / Notiz)
+    const body = document.createElement('div');
+    body.className = 'stop-body';
+    body.addEventListener('click', () => openRpEdit(id));
+    const name = document.createElement('div');
+    name.className = 'stop-name';
+    name.textContent = (stop.title || '').trim() || 'Station';   // textContent -> XSS-sicher
+    body.appendChild(name);
+    if (loc || note){
+      const sub = document.createElement('div');
+      sub.className = 'stop-sub';
+      if (loc){
+        const tmp = document.createElement('span');
+        tmp.innerHTML = mapsAnchor(loc, stop.lat, stop.lon);     // esc-geschuetzter Maps-Link (wie Event-Ort 0020)
+        while (tmp.firstChild) sub.appendChild(tmp.firstChild);
+      }
+      if (loc && note) sub.appendChild(document.createTextNode(' · '));
+      if (note){ const ns = document.createElement('span'); ns.textContent = note; sub.appendChild(ns); }
+      body.appendChild(sub);
+    }
+    row.appendChild(body);
+
+    // Meta-Spalte: Zeit + Aktionen (hoch/runter/loeschen)
+    const meta = document.createElement('div');
+    meta.className = 'stop-meta';
+    if (when){ const t = document.createElement('div'); t.className = 'stop-time'; t.textContent = when; meta.appendChild(t); }
+    const acts = document.createElement('div');
+    acts.className = 'stop-actions';
+    acts.appendChild(buildRpBtn('rp-up', 'Nach oben', '<path d="M18 15l-6-6-6 6"/>', idx === 0, () => rpMove(id, -1)));
+    acts.appendChild(buildRpBtn('rp-down', 'Nach unten', '<path d="M6 9l6 6 6-6"/>', idx === total - 1, () => rpMove(id, 1)));
+    acts.appendChild(buildRpBtn('rp-del', 'Station löschen', '<path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>', false, () => removeRpStop(id)));
+    meta.appendChild(acts);
+    row.appendChild(meta);
+    return row;
+  }
+  function buildRpBtn(cls, label, pathSvg, disabled, onClick){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'stop-btn ' + cls;
+    b.setAttribute('aria-label', label);
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">' + pathSvg + '</svg>';
+    if (disabled) b.disabled = true;
+    else b.addEventListener('click', onClick);
+    return b;
+  }
+  // Station-Editor oeffnen: id == null -> neu, sonst bestehende Station vorbelegen.
+  function openRpEdit(id){
+    rpEditId = id || null;
+    const stop = (id && rpData[id]) ? rpData[id] : {};
+    const t = $('rp-edit-title'); if (t) t.textContent = id ? 'Station bearbeiten' : 'Station hinzufügen';
+    const fT = $('rp-title'), fL = $('rp-loc'), fW = $('rp-when'), fN = $('rp-note');
+    if (fT) fT.value = (stop.title || '');
+    if (fL) fL.value = (stop.location || '');
+    rpLat = coordOK(stop.lat) ? Number(stop.lat) : null;
+    rpLon = coordOK(stop.lon) ? Number(stop.lon) : null;
+    if (fW) fW.value = (stop.datetime || '');
+    if (fN) fN.value = (stop.note || '');
+    const ac = $('rp-loc-ac'); if (ac){ ac.classList.remove('open'); ac.textContent = ''; }
+    const sc = $('rp-edit'); if (sc){ sc.scrollTop = 0; sc.classList.add('open'); }
+    if (fT) setTimeout(() => { try { fT.focus(); } catch(e){} }, 60);
+  }
+  function closeRpEdit(){
+    const sc = $('rp-edit'); if (sc) sc.classList.remove('open');
+    const ac = $('rp-loc-ac'); if (ac){ ac.classList.remove('open'); ac.textContent = ''; }
+    rpEditId = null;
+  }
+  // Station speichern: neu -> push (mit order); bearbeiten -> update (leere Felder -> null,
+  // werden in RTDB entfernt). Titel ist Pflicht.
+  async function saveRp(){
+    const fT = $('rp-title'); if (!fT) return;
+    const title = (fT.value || '').trim();
+    if (!title){
+      const frow = fT.closest('.frow');
+      if (frow){ frow.classList.remove('invalid'); void frow.offsetWidth; frow.classList.add('invalid'); }
+      fT.focus();
+      return;
+    }
+    const loc = ($('rp-loc').value || '').trim();
+    const when = ($('rp-when').value || '').trim();
+    const note = ($('rp-note').value || '').trim();
+    const hasCoord = !!(loc && coordOK(rpLat) && coordOK(rpLon));
+    if (rpEditId){
+      const r = rpStopRef(rpEditId); if (!r) return;
+      try {
+        await update(r, {
+          title,
+          location: loc || null,                       // leer -> null -> in RTDB entfernt
+          lat: hasCoord ? Number(rpLat) : null,        // ohne Ort/Treffer -> null (kein Geister-Pin)
+          lon: hasCoord ? Number(rpLon) : null,
+          datetime: when || null,
+          note: note || null
+        });
+      } catch(e){ /* Live-Listener reconciled */ }
+    } else {
+      const base = rpBaseRef(); if (!base) return;
+      const obj = { title, order: rpNextOrder(rpData), createdBy: state.uid || null, createdAt: serverTimestamp() };
+      if (loc){ obj.location = loc; if (hasCoord){ obj.lat = Number(rpLat); obj.lon = Number(rpLon); } }
+      if (when) obj.datetime = when;
+      if (note) obj.note = note;
+      try { await push(base, obj); } catch(e){ /* Live-Listener reconciled */ }
+    }
+    closeRpEdit();
+  }
+  // Station verschieben: tauscht die order mit dem Nachbarn in der SORTIERTEN Liste. Die
+  // kanonische order = aktueller Sort-Index -> nach dem Tausch eindeutig (Ties brechen ueber
+  // createdAt/Key, s. rpSortedIds), auch bei Legacy-/Luecken-orders.
+  async function rpMove(id, dir){
+    const ids = rpSortedIds(rpData);
+    const i = ids.indexOf(id); if (i < 0) return;
+    const j = i + dir; if (j < 0 || j >= ids.length) return;
+    const ri = rpStopRef(ids[i]), rj = rpStopRef(ids[j]);
+    if (!ri || !rj) return;
+    try { await update(ri, { order: j }); await update(rj, { order: i }); } catch(e){ /* Live-Listener reconciled */ }
+  }
+  async function removeRpStop(id){
+    const r = rpStopRef(id); if (!r) return;
+    try { await remove(r); } catch(e){ /* Live-Listener reconciled */ }
+  }
+  // Live-Subtitle der Modul-Liste: "N Stationen" (1 -> "1 Station", 0 -> "noch leer").
+  function reiseplanSubtitle(ev){
+    const rp = ev && ev.reiseplan;
+    const n = (rp && typeof rp === 'object') ? Object.keys(rp).length : 0;
+    if (!n) return 'noch leer';
+    return n + (n === 1 ? ' Station' : ' Stationen');
+  }
+  function updateReiseplanSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="reiseplan"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? reiseplanSubtitle(ev) : 'noch leer';
+  }
+  // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Buttons -> Editor.
+  if (rpScreen){
+    const rMod = document.querySelector('#detail .mod[data-open="reiseplan"]');
+    if (rMod) rMod.addEventListener('click', openReiseplan);   // zusaetzlich zum generischen [data-open]
+    const rClose = rpScreen.querySelector('[data-close="reiseplan"]');
+    if (rClose) rClose.addEventListener('click', closeReiseplan);
+    const addBtn = $('rp-add-btn'); if (addBtn) addBtn.addEventListener('click', () => openRpEdit(null));
+  }
+  if (rpEditScreen){
+    const cancel = $('rp-edit-cancel'); if (cancel) cancel.addEventListener('click', closeRpEdit);
+    const save = $('rp-save-btn'); if (save) save.addEventListener('click', saveRp);
+    // Ort via geteiltem Photon-Picker (0020/0021): Auswahl -> Koordinaten; Tippen verwirft sie.
+    attachPhotonAC($('rp-loc'), $('rp-loc-ac'),
+      ({ label, lat, lon }) => { $('rp-loc').value = label; rpLat = coordOK(lat) ? Number(lat) : null; rpLon = coordOK(lon) ? Number(lon) : null; },
+      () => { rpLat = null; rpLon = null; });
+  }
+  if (DEBUG) Object.assign(window.__cp, { openReiseplan, renderReiseplan, reiseplanSubtitle, rpSortedIds, rpNextOrder });
 
   // ---- Speichern: neues Event anlegen (push) ODER bestehendes updaten (update) ----
   let creating = false;
