@@ -1424,7 +1424,8 @@
   let lastEvents = {};
   let roomOwnerUid = null;                     // rooms/{room}/ownerUid (Ticket 0024; Host-Loeschrecht 0033, Teil 5)
   let availabilityCache = {};                 // { memberId: { 'YYYY-MM-DD': true } } (Ticket 0008)
-  const calState = { year: 2026, month: 6 };  // Kalender-Tab: Start Juli 2026 (App-Demo-Rahmen, wie Picker)
+  const calBoot = new Date();                  // Kalender-Tab startet auf dem AKTUELLEN Monat (Ticket 0046)
+  const calState = { year: calBoot.getFullYear(), month: calBoot.getMonth() };  // lokale Datums-Teile -> TZ-sicher (kein UTC-Shift)
 
   // Test-/Debug-Bruecke (P1): erlaubt Playwright den direkten RTDB-Zugriff ueber
   // denselben Client. NUR auf localhost aktiv -- auf einer Produktions-URL bleibt der
@@ -3702,7 +3703,8 @@
   // ---- Einzeldatum-Picker (Frist + Auto-Status, Ticket 0007) ----
   // Gleiche Optik wie der Zeitraum-Picker, aber genau EIN Tag. Liefert per onPick
   // { iso, text } zurueck; ISO fuer die Logik, text als Anzeige-String.
-  const sdState = { year: 2026, month: 6, sel: null, onPick: null };   // sel = {y,m,d}
+  const sdBoot = new Date();                                           // Start AKTUELLER Monat (Ticket 0046; lokale Teile -> TZ-sicher)
+  const sdState = { year: sdBoot.getFullYear(), month: sdBoot.getMonth(), sel: null, onPick: null };   // sel = {y,m,d}
   function sdParseISO(iso){
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
     return m ? { y:+m[1], m:+m[2]-1, d:+m[3] } : null;
@@ -3735,9 +3737,10 @@
   }
   function openSingleDate(opts){
     const sel = sdParseISO(opts.iso);
+    const sdNow = new Date();                          // ohne Vorauswahl -> aktueller Monat (Ticket 0046; frisches now je Aufruf, lokale Teile)
     sdState.sel = sel;
-    sdState.year = sel ? sel.y : 2026;
-    sdState.month = sel ? sel.m : 6;
+    sdState.year = sel ? sel.y : sdNow.getFullYear();
+    sdState.month = sel ? sel.m : sdNow.getMonth();
     sdState.onPick = opts.onPick || null;
     const t = $('sdpick-title'); if (t) t.textContent = opts.title || 'Datum wählen';
     renderSingleDate();
