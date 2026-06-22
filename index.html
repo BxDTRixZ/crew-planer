@@ -90,7 +90,7 @@
   .screen > * { flex-shrink:0; }
   #detail { z-index:100; }
   #termin, #kosten, #reiseplan, #packliste, #voting, #flug, #buchungen, #treffpunkt { z-index:200; }
-  #datepick, #grouppick, #sdpick, #rp-edit { z-index:400; }
+  #datepick, #grouppick, #sdpick, #rp-edit, #voting-new { z-index:400; }
   .navbar { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; min-height:52px; background:rgba(0,0,0,0.55); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); }
   .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
   .nav-btn svg { width:20px; height:20px; }
@@ -460,6 +460,26 @@
   .opt-vote-badge { display:flex; align-items:center; gap:4px; background:var(--accent-tint); color:var(--accent-text); font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
   .opt-vote-badge svg { width:12px; height:12px; }
   .bar-fill.acc { background:var(--accent); }
+  /* voting -- echte 1-aus-n-Abstimmungen (Ticket 0043): pro Event mehrere Polls,
+     Optionen wiederverwenden die .opt/.bar/.opt-stats/.opt-people-Klassen. */
+  .poll { background:var(--card); border:0.5px solid var(--card-border); border-radius:18px; padding:14px; margin:0 18px 14px; }
+  .poll-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .poll-q { font-size:18px; font-weight:700; letter-spacing:-0.3px; line-height:1.3; word-break:break-word; min-width:0; }
+  .poll-del { flex-shrink:0; width:30px; height:30px; border:none; background:transparent; color:var(--label-2); display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:8px; }
+  .poll-del svg { width:18px; height:18px; }
+  .poll-del:active { opacity:0.55; }
+  .poll .opts { padding:0; }
+  .poll .opt { cursor:pointer; margin-bottom:10px; }
+  .poll .opt:last-of-type { margin-bottom:0; }
+  .poll .opt:active { transform:scale(0.99); }
+  .poll-noopts { color:var(--label-2); font-size:13px; padding:2px 2px 10px; line-height:1.4; }
+  .poll-add { display:flex; gap:8px; align-items:center; margin-top:12px; }
+  .poll-add .pack-in { flex:1; min-width:0; }
+  .poll-add .pack-add-btn { width:38px; height:38px; }
+  .poll-add .pack-add-btn svg { width:20px; height:20px; }
+  /* Neue-Abstimmung-Editor */
+  #voting-new-opts { margin:0 18px; }
+  .voting-new-opt { text-align:left; }
   /* flug */
   .flight { background:var(--card); border:0.5px solid var(--card-border); border-radius:18px; padding:18px; margin:0 18px 14px; }
   .flight-route { display:flex; align-items:center; justify-content:space-between; }
@@ -1033,28 +1053,29 @@
       <button class="nav-btn" data-close="voting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
       <div class="nav-mid">Voting</div><div class="nav-spacer"></div>
     </div>
-    <div class="hero" style="padding-bottom:4px"><div class="hero-inner"><div class="hero-title" style="font-size:28px">Welches Hotel?</div></div></div>
-    <div class="intro">4 von 6 haben abgestimmt. Tipp deine Wahl.</div>
-    <div class="opts" style="margin-top:8px">
-      <div class="opt voted vote-opt">
-        <div class="opt-head"><div class="opt-date">Hotel Sol Beach</div><div class="opt-vote-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> Deine Stimme</div></div>
-        <div class="opt-stats"><b>3</b> Stimmen</div>
-        <div class="bar"><div class="bar-fill acc" style="width:75%"></div></div>
-        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#00C7BE">BN</div></div>
-      </div>
-      <div class="opt vote-opt">
-        <div class="opt-head"><div class="opt-date">Iberostar Playa</div></div>
-        <div class="opt-stats"><b>1</b> Stimme</div>
-        <div class="bar"><div class="bar-fill acc" style="width:25%"></div></div>
-        <div class="opt-people"><div class="av-sm" style="background:#FF2D55">TS</div></div>
-      </div>
-      <div class="opt vote-opt">
-        <div class="opt-head"><div class="opt-date">Belvedere Resort</div></div>
-        <div class="opt-stats">Noch keine Stimmen</div>
-        <div class="bar"><div class="bar-fill acc" style="width:0%"></div></div>
-      </div>
+    <!-- ECHTES Voting (Ticket 0043): mehrere Polls je Event, jede:r hat GENAU eine Stimme
+         pro Poll. Inhalt kommt aus rooms/{room}/events/{id}/voting (renderVoting). -->
+    <div class="intro">Stimmt über eine Frage ab – z. B. welches Hotel. Jede:r hat genau eine Stimme pro Abstimmung; nochmal auf die eigene Wahl tippen nimmt sie zurück.</div>
+    <div id="voting-list"></div>
+    <div class="mod-empty" id="voting-empty">Noch keine Abstimmung. Tippe unten auf „Neue Abstimmung“, um die erste anzulegen.</div>
+    <button class="wide-action" id="voting-add-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Neue Abstimmung</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- VOTING: neue Abstimmung anlegen (Ticket 0043) -- Frage + mind. 2 Optionen -->
+  <div class="screen" id="voting-new">
+    <div class="navbar">
+      <button class="nav-cancel" id="voting-new-cancel" type="button">Abbrechen</button>
+      <div class="nav-mid">Neue Abstimmung</div>
+      <button class="nav-done" id="voting-create-btn" type="button">Erstellen</button>
     </div>
-    <button class="wide-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Neue Abstimmung</button>
+    <div class="section-label">Frage</div>
+    <div class="fgroup" style="margin:0 18px">
+      <div class="frow"><label>Frage</label><input id="voting-q" placeholder="z. B. Welches Hotel?" maxlength="120" autocomplete="off"></div>
+    </div>
+    <div class="section-label">Optionen (mind. 2)</div>
+    <div class="fgroup" id="voting-new-opts"></div>
+    <button class="wide-action" id="voting-add-opt-line" type="button" style="background:var(--card-2); color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Weitere Option</button>
     <div class="bottom-pad"></div>
   </div>
 
@@ -2033,6 +2054,8 @@
     updateTerminSubtitle(d.id);
     // Reiseplan-Subtitle live aus dem Event-Cache (Ticket 0035).
     updateReiseplanSubtitle(d.id);
+    // Voting-Subtitle live aus dem Event-Cache (Ticket 0043).
+    updateVotingSubtitle(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -3287,18 +3310,342 @@
     setBesorgFilter: f => { besorgFilter = f; syncBesorgSortOptions(); renderBesorg(); },
     setBesorgSort:   s => { besorgSort = s;   if (besorgSortSel) besorgSortSel.value = s; renderBesorg(); } });
 
-  // Voting: Stimme setzen (Badge wandert mit)
-  document.querySelectorAll('.vote-opt').forEach(o => o.addEventListener('click', () => {
-    document.querySelectorAll('.vote-opt').forEach(x => {
-      x.classList.remove('voted');
-      const b = x.querySelector('.opt-vote-badge'); if (b) b.remove();
+  // ---- Voting-Modul (Ticket 0043): echte, live-synchronisierte 1-aus-n-Abstimmungen ----
+  // Speicher unter events/{id}: voting/{pollId} = { question, createdBy, createdAt,
+  //   options:{optId:{label, createdBy, createdAt}}, votes:{uid: optId} }. Liegt UNTER
+  //   events/{id} -> P6-Rules (events member-write/read) decken es ab; KEINE Rules-Aenderung.
+  //   Pick-one: GENAU eine Stimme je Mitglied/Poll (votes/{uid}=optId); erneut auf die eigene
+  //   Wahl -> Stimme zurueck (remove). Mehrere Polls je Event. XSS: Frage/Optionslabels via
+  //   textContent/DOM-Bau (kein innerHTML aus Daten). Eigener onValue-Detacher beim Oeffnen.
+  const votingScreen = $('voting');
+  const votingNewScreen = $('voting-new');
+  let votingUnsub = null;          // aktiver onValue-Detacher
+  let votingData = {};             // letzter RTDB-Stand { pollId: {...} }
+  let votingEventId = null;        // Event, dessen Voting gerade offen ist
+
+  function votingBaseRef(){
+    return (state.room && votingEventId)
+      ? ref(db, `rooms/${state.room}/events/${votingEventId}/voting`) : null;
+  }
+  function votingPollRef(pollId){
+    return (state.room && votingEventId && pollId)
+      ? ref(db, `rooms/${state.room}/events/${votingEventId}/voting/${pollId}`) : null;
+  }
+  function votingOptionsRef(pollId){
+    return (state.room && votingEventId && pollId)
+      ? ref(db, `rooms/${state.room}/events/${votingEventId}/voting/${pollId}/options`) : null;
+  }
+  function votingVoteRef(pollId, uid){
+    return (state.room && votingEventId && pollId && uid)
+      ? ref(db, `rooms/${state.room}/events/${votingEventId}/voting/${pollId}/votes/${uid}`) : null;
+  }
+  // Mitglieder-uids des offenen Events (Bezug fuer Tally-Anteil + "X von Y").
+  function votingMemberIds(){
+    const ev = (lastEvents || {})[votingEventId];
+    return ev ? Object.keys(eventMembers(ev)) : [];
+  }
+  function openVoting(){
+    votingEventId = currentDetailId;                       // an das offene Event koppeln (0007/0019)
+    if (votingUnsub){ votingUnsub(); votingUnsub = null; } // evtl. altes Abo zuerst loesen
+    const r = votingBaseRef();
+    if (!r){ votingData = {}; renderVoting(); return; }
+    votingUnsub = onValue(r, snap => { votingData = snap.val() || {}; renderVoting(); });
+  }
+  function closeVoting(){
+    if (votingUnsub){ votingUnsub(); votingUnsub = null; }
+    votingEventId = null;
+  }
+  // Polls sortiert: aeltester zuerst (createdAt, dann Key) -> stabile Reihenfolge.
+  function votingSortedPollIds(data){
+    const polls = (data && typeof data === 'object') ? data : {};
+    return Object.keys(polls).sort((a, b) => {
+      const ca = (polls[a] && +polls[a].createdAt) || 0, cb = (polls[b] && +polls[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
     });
-    o.classList.add('voted');
-    const badge = document.createElement('div');
-    badge.className = 'opt-vote-badge';
-    badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> Deine Stimme';
-    o.querySelector('.opt-head').appendChild(badge);
-  }));
+  }
+  // Stimmen einer Option (nur Mitglieder gezaehlt -> Anteil kann nie > 100% werden).
+  function votingOptCount(poll, optId, memberIds){
+    const votes = (poll && poll.votes) || {};
+    const ids = (memberIds && memberIds.length) ? memberIds : Object.keys(votes);
+    let n = 0;
+    ids.forEach(uid => { if (votes[uid] === optId) n++; });
+    return n;
+  }
+  // Optionen sortiert: meiste Stimmen zuerst, dann createdAt, dann Key (stabil).
+  function votingSortedOptIds(poll, memberIds){
+    const options = (poll && poll.options && typeof poll.options === 'object') ? poll.options : {};
+    return Object.keys(options).sort((a, b) => {
+      const na = votingOptCount(poll, a, memberIds), nb = votingOptCount(poll, b, memberIds);
+      if (na !== nb) return nb - na;
+      const ca = (options[a] && +options[a].createdAt) || 0, cb = (options[b] && +options[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
+    });
+  }
+  // Mitglieder mit Stimme auf einer EXISTIERENDEN Option dieses Polls (Subtitle "X von Y").
+  function votingVotedCount(poll, memberIds){
+    const options = (poll && poll.options) || {};
+    const votes = (poll && poll.votes) || {};
+    const valid = {};
+    Object.keys(options).forEach(oid => { valid[oid] = true; });
+    let x = 0;
+    (memberIds || []).forEach(uid => { if (valid[votes[uid]]) x++; });
+    return x;
+  }
+  function renderVoting(){
+    const list = $('voting-list'), empty = $('voting-empty');
+    if (!list) return;
+    const ids = votingSortedPollIds(votingData);
+    list.innerHTML = '';                                   // kein innerHTML aus Daten -> DOM-Bau pro Poll
+    if (!ids.length){
+      if (empty) empty.style.display = '';
+      list.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.style.display = '';
+    const memberIds = votingMemberIds();
+    ids.forEach(pid => list.appendChild(buildPoll(pid, votingData[pid] || {}, memberIds)));
+  }
+  function buildPoll(pollId, poll, memberIds){
+    const total = memberIds.length;
+    const wrap = document.createElement('div');
+    wrap.className = 'poll'; wrap.dataset.id = pollId;
+
+    // Kopf: Frage + Poll loeschen
+    const head = document.createElement('div');
+    head.className = 'poll-head';
+    const q = document.createElement('div');
+    q.className = 'poll-q';
+    q.textContent = (poll.question || '').trim() || 'Abstimmung';   // textContent -> XSS-sicher
+    head.appendChild(q);
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'poll-del';
+    del.setAttribute('aria-label', 'Abstimmung löschen');
+    del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>';
+    del.addEventListener('click', () => removePoll(pollId));
+    head.appendChild(del);
+    wrap.appendChild(head);
+
+    // Optionen (sortiert nach Stimmen)
+    const opts = document.createElement('div');
+    opts.className = 'opts';
+    const optIds = votingSortedOptIds(poll, memberIds);
+    const myVote = (poll.votes && state.uid) ? poll.votes[state.uid] : null;
+    if (optIds.length){
+      optIds.forEach(oid => opts.appendChild(
+        buildVoteOpt(pollId, oid, (poll.options || {})[oid] || {}, poll, memberIds, total, myVote)));
+    } else {
+      const none = document.createElement('div');
+      none.className = 'poll-noopts';
+      none.textContent = 'Noch keine Optionen. Füge unten die erste hinzu.';
+      opts.appendChild(none);
+    }
+    wrap.appendChild(opts);
+
+    // Option nachtragen (Inline-Eingabe + Button)
+    const add = document.createElement('div');
+    add.className = 'poll-add';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'pack-in'; inp.maxLength = 80;
+    inp.placeholder = 'Option hinzufügen'; inp.autocomplete = 'off';
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'pack-add-btn';
+    btn.setAttribute('aria-label', 'Option hinzufügen');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>';
+    const submit = () => {
+      const v = (inp.value || '').trim();
+      if (!v){ inp.focus(); return; }
+      addPollOption(pollId, v);
+      inp.value = ''; inp.focus();
+    };
+    btn.addEventListener('click', submit);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    add.appendChild(inp); add.appendChild(btn);
+    wrap.appendChild(add);
+    return wrap;
+  }
+  function buildVoteOpt(pollId, optId, opt, poll, memberIds, total, myVote){
+    const n = votingOptCount(poll, optId, memberIds);
+    const mine = (myVote === optId);
+    const card = document.createElement('div');
+    card.className = 'opt vote-opt' + (mine ? ' voted' : '');
+    card.dataset.id = optId;
+
+    // Kopf: Label + (Deine-Stimme-Badge)
+    const head = document.createElement('div');
+    head.className = 'opt-head';
+    const label = document.createElement('div');
+    label.className = 'opt-date';
+    label.textContent = (opt.label || '').trim() || 'Option';   // textContent -> XSS-sicher
+    head.appendChild(label);
+    if (mine){
+      const badge = document.createElement('div');
+      badge.className = 'opt-vote-badge';
+      badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>';
+      const bl = document.createElement('span'); bl.textContent = 'Deine Stimme';
+      badge.appendChild(bl);
+      head.appendChild(badge);
+    }
+    card.appendChild(head);
+
+    // Stats: "<n> Stimmen" / "1 Stimme" / "Noch keine Stimmen"
+    const stats = document.createElement('div');
+    stats.className = 'opt-stats';
+    if (n === 0){
+      stats.textContent = 'Noch keine Stimmen';
+    } else {
+      const b = document.createElement('b'); b.textContent = String(n);
+      stats.appendChild(b);
+      stats.appendChild(document.createTextNode(' ' + (n === 1 ? 'Stimme' : 'Stimmen')));
+    }
+    card.appendChild(stats);
+
+    // Balken: Anteil an allen Mitgliedern
+    const bar = document.createElement('div'); bar.className = 'bar';
+    const fill = document.createElement('div'); fill.className = 'bar-fill acc';
+    fill.style.width = (total ? Math.round(n / total * 100) : 0) + '%';
+    bar.appendChild(fill); card.appendChild(bar);
+
+    // Avatare der Stimmen (defensiv ueber membersCache)
+    const people = buildVotePeople(poll, optId, memberIds);
+    if (people) card.appendChild(people);
+
+    // Klick = Stimme setzen/zuruecknehmen (pick-one)
+    card.addEventListener('click', () => setVote(pollId, optId));
+    return card;
+  }
+  function buildVotePeople(poll, optId, memberIds){
+    const votes = (poll && poll.votes) || {};
+    const ids = (memberIds && memberIds.length) ? memberIds : Object.keys(votes);
+    const uids = ids.filter(uid => votes[uid] === optId);
+    if (!uids.length) return null;
+    const wrap = document.createElement('div'); wrap.className = 'opt-people';
+    uids.slice(0, 8).forEach(uid => {
+      const m = (membersCache && membersCache[uid]) ? membersCache[uid] : { name: '?' };
+      const tmp = document.createElement('div');
+      tmp.innerHTML = avatarMarkup(m, 'av-sm');             // bestehende Avatar-Logik (0027), XSS-sicher
+      if (tmp.firstChild) wrap.appendChild(tmp.firstChild);
+    });
+    return wrap;
+  }
+  // Eigene Stimme setzen/zuruecknehmen. Pick-one: votes/{uid}=optId ueberschreibt die vorige
+  // Wahl; erneut auf die aktive Wahl -> Stimme entfernt (remove).
+  async function setVote(pollId, optId){
+    const vr = votingVoteRef(pollId, state.uid); if (!vr) return;
+    const poll = (votingData || {})[pollId] || {};
+    const cur = (poll.votes && state.uid) ? poll.votes[state.uid] : null;
+    try {
+      if (cur === optId) await remove(vr);                 // erneut auf die eigene Wahl -> zuruecknehmen
+      else await set(vr, optId);
+    } catch(e){ /* Live-Listener reconciled */ }
+  }
+  // Option zu bestehendem Poll nachtragen.
+  async function addPollOption(pollId, label){
+    const r = votingOptionsRef(pollId); if (!r) return;
+    const v = (label || '').trim(); if (!v) return;
+    try { push(r, { label: v, createdBy: state.uid || null, createdAt: serverTimestamp() }); }
+    catch(e){ /* Live-Listener reconciled */ }
+  }
+  // Poll loeschen (entfernt Frage + Optionen + Stimmen, da alles darunter liegt).
+  async function removePoll(pollId){
+    const r = votingPollRef(pollId); if (!r) return;
+    try { await remove(r); } catch(e){ /* Live-Listener reconciled */ }
+  }
+
+  // ---- Neue Abstimmung anlegen (Editor #voting-new): Frage + mind. 2 Optionen ----
+  function buildVotingNewOptRow(i){
+    const row = document.createElement('div');
+    row.className = 'frow';
+    const lab = document.createElement('label'); lab.textContent = 'Option ' + (i + 1);
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'voting-new-opt'; inp.maxLength = 80; inp.autocomplete = 'off';
+    inp.placeholder = (i < 2) ? 'Pflicht' : 'optional';
+    row.appendChild(lab); row.appendChild(inp);
+    return row;
+  }
+  function renderVotingNewOpts(n){
+    const box = $('voting-new-opts'); if (!box) return;
+    box.innerHTML = '';
+    for (let i = 0; i < n; i++) box.appendChild(buildVotingNewOptRow(i));
+  }
+  function addVotingNewOptLine(){
+    const box = $('voting-new-opts'); if (!box) return;
+    box.appendChild(buildVotingNewOptRow(box.children.length));
+  }
+  function openVotingNew(){
+    const q = $('voting-q'); if (q) q.value = '';
+    renderVotingNewOpts(2);                                // mit 2 leeren Optionszeilen starten
+    const sc = $('voting-new'); if (sc){ sc.scrollTop = 0; sc.classList.add('open'); }
+    if (q) setTimeout(() => { try { q.focus(); } catch(e){} }, 60);
+  }
+  function closeVotingNew(){
+    const sc = $('voting-new'); if (sc) sc.classList.remove('open');
+  }
+  function markVotingInvalid(el){
+    if (!el) return;
+    const frow = el.closest('.frow');
+    if (frow){ frow.classList.remove('invalid'); void frow.offsetWidth; frow.classList.add('invalid'); }
+    try { el.focus(); } catch(e){}
+  }
+  // Poll atomar anlegen: Frage Pflicht, mind. 2 nicht-leere Optionen. Option-Keys via push()
+  // (kein Write) -> ein einziges set() schreibt Frage + alle Optionen konsistent.
+  async function createPoll(){
+    const qEl = $('voting-q'); if (!qEl) return;
+    const question = (qEl.value || '').trim();
+    const box = $('voting-new-opts');
+    const inputs = box ? Array.from(box.querySelectorAll('.voting-new-opt')) : [];
+    const labels = inputs.map(i => (i.value || '').trim()).filter(Boolean);
+    if (!question){ markVotingInvalid(qEl); return; }
+    if (labels.length < 2){ markVotingInvalid(inputs[0]); return; }
+    const base = votingBaseRef(); if (!base) return;
+    const pollRef = push(base);                            // Key generieren, noch kein Write
+    const pollId = pollRef.key;
+    const options = {};
+    labels.forEach(label => {
+      const oRef = push(votingOptionsRef(pollId));         // Option-Key generieren, kein Write
+      options[oRef.key] = { label, createdBy: state.uid || null, createdAt: serverTimestamp() };
+    });
+    try {
+      await set(pollRef, { question, createdBy: state.uid || null, createdAt: serverTimestamp(), options });
+    } catch(e){ /* Live-Listener reconciled */ }
+    closeVotingNew();
+  }
+
+  // Live-Subtitle der Modul-Liste: 0 -> "keine Abstimmung"; 1 -> "<Frage> – X von Y abgestimmt";
+  // >1 -> "N Abstimmungen". Laeuft gratis ueber den bestehenden events-Listener (voting im Snapshot).
+  function votingSubtitle(ev){
+    const v = ev && ev.voting;
+    const pollIds = (v && typeof v === 'object') ? Object.keys(v) : [];
+    if (!pollIds.length) return 'keine Abstimmung';
+    if (pollIds.length > 1) return pollIds.length + ' Abstimmungen';
+    const poll = v[pollIds[0]] || {};
+    const memberIds = Object.keys(eventMembers(ev));
+    const q = (poll.question || '').trim() || 'Abstimmung';
+    return q + ' – ' + votingVotedCount(poll, memberIds) + ' von ' + memberIds.length + ' abgestimmt';
+  }
+  function updateVotingSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="voting"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? votingSubtitle(ev) : 'keine Abstimmung';
+  }
+  // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Buttons -> Editor/Anlegen.
+  if (votingScreen){
+    const vMod = document.querySelector('#detail .mod[data-open="voting"]');
+    if (vMod) vMod.addEventListener('click', openVoting);   // zusaetzlich zum generischen [data-open]
+    const vClose = votingScreen.querySelector('[data-close="voting"]');
+    if (vClose) vClose.addEventListener('click', closeVoting);
+    const addBtn = $('voting-add-btn'); if (addBtn) addBtn.addEventListener('click', openVotingNew);
+  }
+  if (votingNewScreen){
+    const cancel = $('voting-new-cancel'); if (cancel) cancel.addEventListener('click', closeVotingNew);
+    const create = $('voting-create-btn'); if (create) create.addEventListener('click', createPoll);
+    const addLine = $('voting-add-opt-line'); if (addLine) addLine.addEventListener('click', addVotingNewOptLine);
+  }
+  if (DEBUG) Object.assign(window.__cp, { openVoting, renderVoting, votingOptCount, votingVotedCount,
+    votingSubtitle, votingSortedOptIds, votingSortedPollIds, createPoll });
 
   // create sheet
   const sheet = $('sheet'), backdrop = $('backdrop');
