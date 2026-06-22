@@ -90,7 +90,7 @@
   .screen > * { flex-shrink:0; }
   #detail { z-index:100; }
   #termin, #kosten, #reiseplan, #packliste, #voting, #flug, #buchungen, #treffpunkt { z-index:200; }
-  #datepick, #grouppick, #sdpick, #rp-edit, #voting-new, #flug-edit { z-index:400; }
+  #datepick, #grouppick, #sdpick, #rp-edit, #voting-new, #flug-edit, #buch-edit { z-index:400; }
   .navbar { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; min-height:52px; background:rgba(0,0,0,0.55); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); }
   .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
   .nav-btn svg { width:20px; height:20px; }
@@ -503,8 +503,13 @@
   .file-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
   .file-icon svg { width:19px; height:19px; color:#fff; }
   .file-body { flex:1; min-width:0; }
-  .file-name { font-size:16px; font-weight:500; letter-spacing:-0.3px; }
-  .file-sub { font-size:13px; color:var(--label-2); margin-top:1px; letter-spacing:-0.1px; }
+  .file-name { font-size:16px; font-weight:500; letter-spacing:-0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-sub { font-size:13px; color:var(--label-2); margin-top:1px; letter-spacing:-0.1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* buchungen -- echte, live-synchronisierte Link-Eintraege (Ticket 0045); Look unveraendert.
+     Icon-Hintergrund ueber Theme-Variable (keine Hardcode-Farbe), Link in der Sub-Zeile als Akzent. */
+  #buch-list .file-icon { background:var(--accent); }
+  .file-sub .maps-link { color:var(--accent-text); }
+  .file-sub .buch-note { color:var(--label-2); }
 
   /* TREFFPUNKT */
   .map-prev { height:148px; margin:0 18px 14px; border-radius:18px; background:linear-gradient(135deg,#2C2C2E,#1A1A1C); border:0.5px solid var(--card-border); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
@@ -857,7 +862,7 @@
       </div>
       <div class="mod" data-open="buchungen">
         <div class="mod-icon" style="background:#8E8E93"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></div>
-        <div class="mod-body"><div class="mod-title">Buchungen</div><div class="mod-sub">2 Dateien</div></div>
+        <div class="mod-body"><div class="mod-title">Buchungen</div><div class="mod-sub">noch leer</div></div>
         <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="mod" data-open="treffpunkt">
@@ -1127,22 +1132,30 @@
       <button class="nav-btn" data-close="buchungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
       <div class="nav-mid">Buchungen</div><div class="nav-spacer"></div>
     </div>
-    <div class="section-label">Dateien</div>
-    <div class="modules">
-      <div class="file-row">
-        <div class="file-icon" style="background:#FF3B30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
-        <div class="file-body"><div class="file-name">Hotel-Bestätigung.pdf</div><div class="file-sub">Max · 3. Juni</div></div>
-      </div>
-      <div class="file-row">
-        <div class="file-icon" style="background:#FF3B30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
-        <div class="file-body"><div class="file-name">Mietwagen-Voucher.pdf</div><div class="file-sub">Jonas · 5. Juni</div></div>
-      </div>
-      <div class="file-row">
-        <div class="file-icon" style="background:#34C759"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l5-5 4 4 3-3 4 4"/><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/></svg></div>
-        <div class="file-body"><div class="file-name">Bootstour-Ticket.jpg</div><div class="file-sub">Tim · 8. Juni</div></div>
-      </div>
+    <!-- ECHTES Buchungen-Modul (Ticket 0045): verlinkte Eintraege je Event (KEIN Datei-Upload).
+         Inhalt aus rooms/{room}/events/{id}/buchungen (renderBuchungen), sortiert nach createdAt.
+         Eintrag = Titel + Link (oeffnet extern) + optional Notiz. -->
+    <div class="intro">Sammelt eure Buchungen als Links – Hotel, Mietwagen, Tickets. Jeder Eintrag hat einen Titel, einen Link und optional eine Notiz. Kein Datei-Upload.</div>
+    <div id="buch-list" class="modules"></div>
+    <div class="mod-empty" id="buch-empty">Noch keine Buchung. Tippe unten auf „Buchung hinzufügen“, um die erste anzulegen.</div>
+    <button class="wide-action" id="buch-add-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Buchung hinzufügen</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- BUCHUNG: Eintrag anlegen/bearbeiten/loeschen (Ticket 0045) -- Link statt Datei-Upload -->
+  <div class="screen" id="buch-edit">
+    <div class="navbar">
+      <button class="nav-cancel" id="buch-edit-cancel" type="button">Abbrechen</button>
+      <div class="nav-mid" id="buch-edit-title">Buchung</div>
+      <button class="nav-done" id="buch-save-btn" type="button">Speichern</button>
     </div>
-    <button class="wide-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Datei hinzufügen</button>
+    <div class="section-label">Buchung</div>
+    <div class="fgroup">
+      <div class="frow"><label>Titel</label><input id="buch-title" placeholder="z.B. Hotel Sol Beach" maxlength="80" autocomplete="off"></div>
+      <div class="frow"><label>Link</label><input id="buch-url" placeholder="https://…" inputmode="url" maxlength="600" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="frow"><label>Notiz</label><input id="buch-note" placeholder="optional" maxlength="120" autocomplete="off"></div>
+    </div>
+    <button class="kexp-delete" id="buch-delete" type="button" hidden>Buchung löschen</button>
     <div class="bottom-pad"></div>
   </div>
 
@@ -2065,6 +2078,8 @@
     updateVotingSubtitle(d.id);
     // Flug-Subtitle live aus dem Event-Cache (Ticket 0044).
     updateFlugSubtitle(d.id);
+    // Buchungen-Subtitle live aus dem Event-Cache (Ticket 0045).
+    updateBuchSubtitle(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -4761,6 +4776,209 @@
     }));
   }
   if (DEBUG) Object.assign(window.__cp, { openFlug, renderFlug, flugSubtitle, flugSortedIds, flugDateShort, flugNormTime, flugDateLong });
+
+  // ---- Buchungen-Modul (Ticket 0045): verlinkte Eintraege pro Event ---------------------
+  // Speicher: rooms/{room}/events/{id}/buchungen/{bid} =
+  //   { title, url, note?, createdBy, createdAt }.
+  // Liegt UNTER events/{id} -> P6-Rules (events member-write/read) decken es ab; KEINE
+  // Rules-Aenderung. KEIN Datei-Upload (offene Firebase-Storage-Billing-Entscheidung) -> rein
+  // Links ueber den Editor #buch-edit (Muster wie #flug-edit 0044 / #rp-edit 0035). Look ueber
+  // die bestehenden .file-row/.file-icon/.file-body/.file-name/.file-sub-CSS (prototype-v8).
+  // Sortierung: createdAt aufsteigend, stabil ueber den Key.
+  // LINK-SICHERHEIT (Kern-Anforderung): nur absolute http(s)-URLs werden als Link akzeptiert
+  // (bookingNormUrl -> javascript:/data:/mailto: u.ae. werden verworfen, Save blockt). Der href
+  // wird per Property-Zuweisung (a.href) auf den validierten Wert gesetzt, NIE via innerHTML.
+  // XSS: Titel/Notiz/Anzeige-Text ausschliesslich via textContent/DOM-Bau (kein innerHTML aus Daten).
+  const buchScreen = $('buchungen');
+  const buchEditScreen = $('buch-edit');
+  let buchUnsub = null;            // aktiver onValue-Detacher
+  let buchData = {};               // letzter RTDB-Stand { bid: {...} }
+  let buchEventId = null;          // Event, dessen Buchungen gerade offen sind
+  let buchEditId = null;           // im Editor bearbeiteter Eintrag (null = neue Buchung)
+
+  function buchBaseRef(){
+    return (state.room && buchEventId)
+      ? ref(db, `rooms/${state.room}/events/${buchEventId}/buchungen`) : null;
+  }
+  function buchRef(bid){
+    return (state.room && buchEventId && bid)
+      ? ref(db, `rooms/${state.room}/events/${buchEventId}/buchungen/${bid}`) : null;
+  }
+  function openBuchungen(){
+    buchEventId = currentDetailId;                     // an das offene Event koppeln (0007/0019)
+    if (buchUnsub){ buchUnsub(); buchUnsub = null; }    // evtl. altes Abo zuerst loesen
+    const r = buchBaseRef();
+    if (!r){ buchData = {}; renderBuchungen(); return; }
+    buchUnsub = onValue(r, snap => { buchData = snap.val() || {}; renderBuchungen(); });
+  }
+  function closeBuchungen(){
+    if (buchUnsub){ buchUnsub(); buchUnsub = null; }
+    buchEventId = null;
+  }
+  // Rohwert -> sichere absolute http(s)-URL (normalisiert) ODER null (leer/unsicher/ungueltig).
+  // Hatte der Wert bereits ein Schema, wird NUR http/https akzeptiert (javascript:/data:/mailto:
+  // -> null, NIE https:// davorgehaengt). Ohne Schema -> "https://" voran + erneut pruefen.
+  function bookingNormUrl(raw){
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s) return null;
+    let u = null;
+    try { u = new URL(s); } catch(e){ u = null; }
+    if (u) return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : null;
+    try {
+      const u2 = new URL('https://' + s);
+      return (u2.protocol === 'http:' || u2.protocol === 'https:') ? u2.href : null;
+    } catch(e){ return null; }
+  }
+  // Anzeige-Text des Links = Host (security-relevant, kompakt); Fallback: die URL selbst.
+  function buchHostLabel(safeUrl){
+    try { return new URL(safeUrl).host || safeUrl; } catch(e){ return safeUrl; }
+  }
+  // Buchungen sortiert: createdAt aufsteigend, dann Key (stabil).
+  function buchSortedIds(data){
+    const b = (data && typeof data === 'object') ? data : {};
+    return Object.keys(b).sort((x, y) => {
+      const cx = (b[x] && +b[x].createdAt) || 0, cy = (b[y] && +b[y].createdAt) || 0;
+      if (cx !== cy) return cx - cy;
+      return x < y ? -1 : 1;
+    });
+  }
+  function renderBuchungen(){
+    const list = $('buch-list'), empty = $('buch-empty');
+    if (!list) return;
+    const ids = buchSortedIds(buchData);
+    list.innerHTML = '';                               // kein innerHTML aus Daten -> DOM-Bau pro Eintrag
+    if (!ids.length){
+      if (empty) empty.style.display = '';
+      list.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.style.display = '';
+    ids.forEach(id => list.appendChild(buildBuchung(id, buchData[id] || {})));
+  }
+  // Eine Buchung = file-row (Icon + Titel + Sub-Zeile mit klickbarem Link + optionaler Notiz).
+  // Zeile -> Editor; Klick auf den Link oeffnet extern (stopPropagation -> kein Editor).
+  function buildBuchung(id, b){
+    const title = ((b && b.title) ? String(b.title) : '').trim() || 'Buchung';
+    const note = ((b && b.note) ? String(b.note) : '').trim();
+    const safe = bookingNormUrl(b && b.url);           // null bei leer/unsicher (Legacy/Cross-Client-Schutz)
+
+    const row = document.createElement('div');
+    row.className = 'file-row'; row.dataset.id = id;
+    row.addEventListener('click', () => openBuchEdit(id));
+
+    const icon = document.createElement('div');
+    icon.className = 'file-icon';
+    icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>';
+    row.appendChild(icon);
+
+    const body = document.createElement('div'); body.className = 'file-body';
+    const name = document.createElement('div'); name.className = 'file-name';
+    name.textContent = title;                          // XSS-sicher
+    body.appendChild(name);
+
+    const sub = document.createElement('div'); sub.className = 'file-sub';
+    if (safe){
+      const a = document.createElement('a');
+      a.className = 'maps-link';
+      a.href = safe;                                   // bereits auf http(s) validiert -> Property-Set, kein innerHTML
+      a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = buchHostLabel(safe);             // Anzeige via textContent
+      a.addEventListener('click', e => e.stopPropagation());   // Link extern, oeffnet NICHT den Editor
+      sub.appendChild(a);
+    } else {
+      const span = document.createElement('span');
+      span.textContent = ((b && b.url) ? String(b.url) : '').trim() || 'Kein Link';   // unsicher/leer -> nur Text
+      sub.appendChild(span);
+    }
+    if (note){
+      sub.appendChild(document.createTextNode('  ·  '));
+      const n = document.createElement('span'); n.className = 'buch-note';
+      n.textContent = note;                            // XSS-sicher
+      sub.appendChild(n);
+    }
+    body.appendChild(sub);
+    row.appendChild(body);
+    return row;
+  }
+  // Editor oeffnen: id == null -> neu, sonst bestehende Buchung vorbelegen.
+  function openBuchEdit(id){
+    buchEditId = id || null;
+    const b = (id && buchData[id]) ? buchData[id] : {};
+    const t = $('buch-edit-title'); if (t) t.textContent = id ? 'Buchung bearbeiten' : 'Buchung hinzufügen';
+    buchSetVal('buch-title', b.title || '');
+    buchSetVal('buch-url', b.url || '');
+    buchSetVal('buch-note', b.note || '');
+    const del = $('buch-delete'); if (del) del.hidden = !id;
+    const sc = $('buch-edit'); if (sc){ sc.scrollTop = 0; sc.classList.add('open'); }
+    const f = $('buch-title'); if (f) setTimeout(() => { try { f.focus(); } catch(e){} }, 60);
+  }
+  function buchSetVal(elId, v){ const el = $(elId); if (el) el.value = v; }
+  function closeBuchEdit(){
+    const sc = $('buch-edit'); if (sc) sc.classList.remove('open');
+    buchEditId = null;
+  }
+  function buchMarkInvalid(el){
+    if (!el) return;
+    const frow = el.closest('.frow');
+    if (frow){ frow.classList.remove('invalid'); void frow.offsetWidth; frow.classList.add('invalid'); }
+    try { el.focus(); } catch(e){}
+  }
+  // Speichern: Pflicht = Titel + gueltiger http(s)-Link. Optional = Notiz. Neu -> push; bearbeiten
+  // -> update (geleerte Notiz -> null -> in RTDB entfernt). Unsicherer/ungueltiger Link blockt Save.
+  async function saveBuchung(){
+    const tEl = $('buch-title'), uEl = $('buch-url');
+    const title = ((tEl && tEl.value) || '').trim();
+    if (!title){ buchMarkInvalid(tEl); return; }
+    const url = bookingNormUrl((uEl && uEl.value) || '');
+    if (!url){ buchMarkInvalid(uEl); return; }          // leer ODER unsicheres/ungueltiges Schema
+    const note = (($('buch-note') && $('buch-note').value) || '').trim();
+    if (buchEditId){
+      const r = buchRef(buchEditId); if (!r) return;
+      try { await update(r, { title, url, note: note || null }); }
+      catch(e){ /* Live-Listener reconciled */ }
+    } else {
+      const base = buchBaseRef(); if (!base) return;
+      const obj = { title, url, createdBy: state.uid || null, createdAt: serverTimestamp() };
+      if (note) obj.note = note;
+      try { await push(base, obj); } catch(e){ /* Live-Listener reconciled */ }
+    }
+    closeBuchEdit();
+  }
+  async function removeBuchung(){
+    if (!buchEditId){ closeBuchEdit(); return; }
+    const r = buchRef(buchEditId);
+    if (r){ try { await remove(r); } catch(e){ /* Live-Listener reconciled */ } }
+    closeBuchEdit();
+  }
+  // Live-Subtitle der Modul-Liste: "N Buchungen" (1 -> "1 Buchung"); 0 -> "noch leer".
+  // Laeuft gratis ueber den bestehenden events-Listener (buchungen im Snapshot).
+  function buchSubtitle(ev){
+    const b = ev && ev.buchungen;
+    const n = (b && typeof b === 'object') ? Object.keys(b).length : 0;
+    if (!n) return 'noch leer';
+    return n === 1 ? '1 Buchung' : n + ' Buchungen';
+  }
+  function updateBuchSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="buchungen"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? buchSubtitle(ev) : 'noch leer';   // textContent -> XSS-sicher
+  }
+  // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Button -> Editor.
+  if (buchScreen){
+    const bMod = document.querySelector('#detail .mod[data-open="buchungen"]');
+    if (bMod) bMod.addEventListener('click', openBuchungen);   // zusaetzlich zum generischen [data-open]
+    const bClose = buchScreen.querySelector('[data-close="buchungen"]');
+    if (bClose) bClose.addEventListener('click', closeBuchungen);
+    const addBtn = $('buch-add-btn'); if (addBtn) addBtn.addEventListener('click', () => openBuchEdit(null));
+  }
+  if (buchEditScreen){
+    const cancel = $('buch-edit-cancel'); if (cancel) cancel.addEventListener('click', closeBuchEdit);
+    const save = $('buch-save-btn'); if (save) save.addEventListener('click', saveBuchung);
+    const del = $('buch-delete'); if (del) del.addEventListener('click', removeBuchung);
+  }
+  if (DEBUG) Object.assign(window.__cp, { openBuchungen, renderBuchungen, buchSubtitle, buchSortedIds, bookingNormUrl });
 
   // ---- Speichern: neues Event anlegen (push) ODER bestehendes updaten (update) ----
   let creating = false;
