@@ -183,6 +183,13 @@
   .tg svg { width:15px; height:15px; }
   .tg.yes.on { background:var(--green-tint); border-color:transparent; color:var(--green); }
   .tg.no.on { background:rgba(255,69,58,0.18); border-color:transparent; color:var(--red); }
+  .tg.maybe.on { background:rgba(255,159,0,0.18); border-color:transparent; color:var(--amber); }
+  /* Termin-Findung Aktionen (Ticket 0034) */
+  .termin-actions { display:flex; align-items:center; gap:10px; margin-top:14px; }
+  .termin-adopt { flex:1; text-align:center; background:var(--accent-tint); color:var(--accent-text); border:none; border-radius:12px; padding:10px 12px; font-size:14px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
+  .termin-adopt:active { transform:scale(0.97); }
+  .termin-del { flex-shrink:0; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--separator); border-radius:12px; color:var(--label-2); cursor:pointer; }
+  .termin-del svg { width:17px; height:17px; }
 
   /* KOSTEN */
   .bal-amount { font-size:48px; font-weight:700; letter-spacing:-1.2px; line-height:1; }
@@ -859,43 +866,15 @@
     <div class="hero" style="padding-bottom:4px">
       <div class="hero-inner"><div class="hero-title" style="font-size:28px">Wann passt's allen?</div></div>
     </div>
-    <div class="intro">Trag ein, wann du <b style="color:var(--green)">kannst</b> oder <b style="color:var(--red)">nicht kannst</b>. Sobald alle dabei sind, seht ihr den besten Termin.</div>
+    <div class="intro">Schlagt Datums-Optionen vor und stimmt pro Termin ab: <b style="color:var(--green)">passt</b>, <b style="color:var(--amber)">vielleicht</b> oder <b style="color:var(--red)">passt nicht</b>. Die führende Option seht ihr oben.</div>
 
-    <div class="section-label" style="margin-top:16px">Bester Termin</div>
-    <div class="opts">
-      <div class="opt best">
-        <div class="opt-head"><div class="opt-date">12.–19. Juli</div><div class="opt-best-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> Passt allen</div></div>
-        <div class="opt-stats"><b>6 von 6</b> können</div>
-        <div class="bar"><div class="bar-fill" style="width:100%"></div></div>
-        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#FF2D55">TS</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#AF52DE">LM</div><div class="av-sm" style="background:#007AFF">FH</div></div>
-        <div class="opt-toggle"><button class="tg yes on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
-      </div>
-    </div>
+    <button class="wide-action" id="termin-add-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Termin-Option vorschlagen</button>
 
-    <div class="section-label">Weitere Optionen</div>
-    <div class="opts">
-      <div class="opt">
-        <div class="opt-head"><div class="opt-date">19.–26. Juli</div></div>
-        <div class="opt-stats"><b>5 von 6</b> können · 1 kann nicht</div>
-        <div class="bar"><div class="bar-fill" style="width:83%"></div></div>
-        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#FF2D55">TS</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#007AFF">FH</div><div class="av-sm cant" style="background:#AF52DE">LM</div></div>
-        <div class="opt-toggle"><button class="tg yes on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
-      </div>
-      <div class="opt">
-        <div class="opt-head"><div class="opt-date">5.–12. Juli</div></div>
-        <div class="opt-stats"><b>4 von 6</b> können · 2 kann nicht</div>
-        <div class="bar"><div class="bar-fill" style="width:66%"></div></div>
-        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#34C759">JL</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#AF52DE">LM</div><div class="av-sm cant" style="background:#FF2D55">TS</div><div class="av-sm cant" style="background:#007AFF">FH</div></div>
-        <div class="opt-toggle"><button class="tg yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
-      </div>
-      <div class="opt">
-        <div class="opt-head"><div class="opt-date">2.–9. August</div></div>
-        <div class="opt-stats"><b>3 von 6</b> können · 3 kann nicht</div>
-        <div class="bar"><div class="bar-fill" style="width:50%"></div></div>
-        <div class="opt-people"><div class="av-sm" style="background:#FF9500">MK</div><div class="av-sm" style="background:#00C7BE">BN</div><div class="av-sm" style="background:#007AFF">FH</div><div class="av-sm cant" style="background:#34C759">JL</div><div class="av-sm cant" style="background:#FF2D55">TS</div><div class="av-sm cant" style="background:#AF52DE">LM</div></div>
-        <div class="opt-toggle"><button class="tg yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Kann</button><button class="tg no on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M18 6L6 18"/></svg> Kann nicht</button></div>
-      </div>
-    </div>
+    <div class="section-label" id="termin-best-label" style="display:none">Führt</div>
+    <div class="opts" id="termin-best"></div>
+    <div class="section-label" id="termin-more-label" style="display:none">Weitere Optionen</div>
+    <div class="opts" id="termin-more"></div>
+    <div class="mod-empty" id="termin-empty">Noch keine Termine vorgeschlagen. Tippe oben auf „Termin-Option vorschlagen“, um den ersten Vorschlag zu machen.</div>
     <div class="bottom-pad"></div>
   </div>
 
@@ -1742,6 +1721,7 @@
       renderCrew();                              // Crew-Tab live aus echten Mitgliedern (Ticket 0004)
       if (packEventId) renderPackliste();        // Zuweisungs-Avatar/-Name live nachziehen (Ticket 0029)
       if (kostenEventId) renderKosten();         // Zahler-/Saldo-Namen live nachziehen (Ticket 0033, Teil 1)
+      if (terminEventId) renderTermin();         // Termin-Optionen: Avatare live nachziehen (Ticket 0034)
       renderBesorg();                            // Besorg-Zuweisungen live nachziehen (Ticket 0030)
     });
     onValue(ref(db, `rooms/${room}/events`), snap => {
@@ -2035,6 +2015,8 @@
     renderDetailStatus(d.status, d.deadline);
     // Loeschen-Knopf nur fuer Berechtigte sichtbar (Ticket 0033, Teil 5).
     updateDeleteVisibility(d.id);
+    // Termin-Findung-Subtitle live aus dem Event-Cache (Ticket 0034).
+    updateTerminSubtitle(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -2153,9 +2135,7 @@
     p.classList.add(sClasses[p.dataset.s]);
   }));
 
-  document.querySelectorAll('.opt-toggle').forEach(grp => grp.querySelectorAll('.tg').forEach(btn => btn.addEventListener('click', () => {
-    grp.querySelectorAll('.tg').forEach(b => b.classList.remove('on')); btn.classList.add('on');
-  })));
+  // (Mock-Handler .opt-toggle entfernt -- Termin-Optionen werden ab Ticket 0034 dynamisch verdrahtet)
 
   // ---- Packliste-Modul (Ticket 0029): echte, live-synchronisierte Liste pro Event ----
   // Speicher: rooms/{room}/events/{eventId}/packliste/{itemId}
@@ -2739,6 +2719,287 @@
     if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeKexp(); });
   }
   if (DEBUG) Object.assign(window.__cp, { openKosten, computeBalances, parseAmount, fmtEuro });
+
+  // ---- Termin-Findung-Modul (Ticket 0034): echte, live-synchronisierte Datums-Abstimmung ----
+  // Speicher unter events/{id}: terminfindung/options/{optId} = { date(ISO), createdBy, createdAt }
+  //   und terminfindung/votes/{uid}/{optId} = 'yes'|'maybe'|'no'. Liegt UNTER events/{id} ->
+  //   P6-Rules (events member-write/read) decken es ab; KEINE Rules-Aenderung. XSS: nur Datums-
+  //   Strings via textContent/DOM-Bau, kein innerHTML aus Daten. Eigenstaendige Abstimmung
+  //   (NICHT aus dem Kalender abgeleitet). Tally = Stimmen je Option; fuehrend = meiste 'yes'.
+  const terminScreen = $('termin');
+  let terminUnsub = null;          // aktiver onValue-Detacher (Firebase gibt ihn zurueck)
+  let terminData = {};             // letzter RTDB-Stand { options:{...}, votes:{...} }
+  let terminEventId = null;        // Event, dessen Termin-Findung gerade offen ist
+
+  function terminBaseRef(){
+    return (state.room && terminEventId)
+      ? ref(db, `rooms/${state.room}/events/${terminEventId}/terminfindung`) : null;
+  }
+  function terminOptionsRef(){
+    return (state.room && terminEventId)
+      ? ref(db, `rooms/${state.room}/events/${terminEventId}/terminfindung/options`) : null;
+  }
+  function terminOptionRef(optId){
+    return (state.room && terminEventId && optId)
+      ? ref(db, `rooms/${state.room}/events/${terminEventId}/terminfindung/options/${optId}`) : null;
+  }
+  function terminVoteRef(uid, optId){
+    return (state.room && terminEventId && uid && optId)
+      ? ref(db, `rooms/${state.room}/events/${terminEventId}/terminfindung/votes/${uid}/${optId}`) : null;
+  }
+  // Mitglieder-uids des offenen Events (Quelle fuer "X von Y" + Tally-Bezug).
+  function terminMemberIds(){
+    const ev = (lastEvents || {})[terminEventId];
+    return ev ? Object.keys(eventMembers(ev)) : [];
+  }
+  function openTermin(){
+    terminEventId = currentDetailId;                       // an das offene Event koppeln (0007/0019)
+    if (terminUnsub){ terminUnsub(); terminUnsub = null; } // evtl. altes Abo zuerst loesen
+    const r = terminBaseRef();
+    if (!r){ terminData = {}; renderTermin(); return; }
+    terminUnsub = onValue(r, snap => { terminData = snap.val() || {}; renderTermin(); });
+  }
+  function closeTermin(){
+    if (terminUnsub){ terminUnsub(); terminUnsub = null; }
+    terminEventId = null;
+  }
+  // Stimmen je Option zaehlen: { yes, maybe, no } ueber alle gegebenen Member-Stimmen.
+  function terminTally(data, optId, memberIds){
+    const votes = (data && data.votes) || {};
+    const ids = (memberIds && memberIds.length) ? memberIds : Object.keys(votes);
+    const t = { yes:0, maybe:0, no:0 };
+    ids.forEach(uid => {
+      const v = votes[uid] && votes[uid][optId];
+      if (v === 'yes' || v === 'maybe' || v === 'no') t[v]++;
+    });
+    return t;
+  }
+  // Anzahl Mitglieder mit >=1 Stimme auf einer EXISTIERENDEN Option (Subtitle "X von Y").
+  function terminVotedCount(data, memberIds){
+    const options = (data && data.options) || {};
+    const votes = (data && data.votes) || {};
+    const optIds = Object.keys(options);
+    if (!optIds.length) return 0;
+    let x = 0;
+    (memberIds || []).forEach(uid => {
+      const mv = votes[uid] || {};
+      if (optIds.some(oid => mv[oid] === 'yes' || mv[oid] === 'maybe' || mv[oid] === 'no')) x++;
+    });
+    return x;
+  }
+  // Optionen sortiert: meiste 'yes' zuerst, dann frueheres Datum, dann createdAt/Key (stabil).
+  function terminSortedOptIds(data, memberIds){
+    const options = (data && data.options) || {};
+    return Object.keys(options).sort((a, b) => {
+      const ya = terminTally(data, a, memberIds).yes, yb = terminTally(data, b, memberIds).yes;
+      if (ya !== yb) return yb - ya;
+      const da = String((options[a] && options[a].date) || ''), dbb = String((options[b] && options[b].date) || '');
+      if (da !== dbb) return da < dbb ? -1 : 1;
+      const ca = (options[a] && +options[a].createdAt) || 0, cb = (options[b] && +options[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
+    });
+  }
+  function renderTermin(){
+    const bestEl = $('termin-best'), moreEl = $('termin-more');
+    if (!bestEl || !moreEl) return;
+    const memberIds = terminMemberIds();
+    const ids = terminSortedOptIds(terminData, memberIds);
+    const bestLab = $('termin-best-label'), moreLab = $('termin-more-label'), emptyEl = $('termin-empty');
+    bestEl.innerHTML = ''; moreEl.innerHTML = '';            // kein innerHTML aus Daten -> DOM-Bau pro Option
+    if (!ids.length){
+      if (bestLab) bestLab.style.display = 'none';
+      if (moreLab) moreLab.style.display = 'none';
+      bestEl.style.display = 'none'; moreEl.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+    const total = memberIds.length;
+    const leadId = ids[0];
+    const leadHasYes = terminTally(terminData, leadId, memberIds).yes > 0;   // erst ab 1 'yes' als "fuehrend" markieren
+    bestEl.style.display = ''; if (bestLab) bestLab.style.display = '';
+    bestEl.appendChild(buildTerminOpt(leadId, terminData.options[leadId] || {}, memberIds, total, leadHasYes));
+    const rest = ids.slice(1);
+    if (rest.length){
+      moreEl.style.display = ''; if (moreLab) moreLab.style.display = '';
+      rest.forEach(id => moreEl.appendChild(buildTerminOpt(id, terminData.options[id] || {}, memberIds, total, false)));
+    } else {
+      moreEl.style.display = 'none'; if (moreLab) moreLab.style.display = 'none';
+    }
+  }
+  function buildTerminOpt(id, opt, memberIds, total, isLead){
+    const t = terminTally(terminData, id, memberIds);
+    const myVote = (terminData.votes && state.uid && terminData.votes[state.uid]) ? terminData.votes[state.uid][id] : null;
+    const card = document.createElement('div');
+    card.className = 'opt' + (isLead ? ' best' : '');
+    card.dataset.id = id;
+
+    // Kopf: Datum + (fuehrend-Badge)
+    const head = document.createElement('div');
+    head.className = 'opt-head';
+    const date = document.createElement('div');
+    date.className = 'opt-date';
+    date.textContent = fmtFullDate(opt.date) || 'Datum offen';   // textContent -> XSS-sicher
+    head.appendChild(date);
+    if (isLead){
+      const badge = document.createElement('div');
+      badge.className = 'opt-best-badge';
+      badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>';
+      const bl = document.createElement('span');
+      bl.textContent = (total > 0 && t.yes >= total) ? 'Passt allen' : 'Führt';
+      badge.appendChild(bl);
+      head.appendChild(badge);
+    }
+    card.appendChild(head);
+
+    // Tally-Zeile: "<yes> von <total> verfügbar" (+ vielleicht/nicht, wenn vorhanden)
+    const stats = document.createElement('div');
+    stats.className = 'opt-stats';
+    const yb = document.createElement('b'); yb.textContent = String(t.yes);
+    stats.appendChild(yb);
+    let tail = ' von ' + total + ' verfügbar';
+    if (t.maybe) tail += ' · ' + t.maybe + ' vielleicht';
+    if (t.no) tail += ' · ' + t.no + ' nicht';
+    stats.appendChild(document.createTextNode(tail));
+    card.appendChild(stats);
+
+    // Balken: Anteil 'verfuegbar' an allen Mitgliedern
+    const bar = document.createElement('div'); bar.className = 'bar';
+    const fill = document.createElement('div'); fill.className = 'bar-fill';
+    fill.style.width = (total ? Math.round(t.yes / total * 100) : 0) + '%';
+    bar.appendChild(fill); card.appendChild(bar);
+
+    // Avatare der 'verfuegbar'-Stimmen (visuelle Fidelitaet, defensiv ueber membersCache)
+    const people = buildTerminPeople(id, memberIds);
+    if (people) card.appendChild(people);
+
+    // 3-Stufen-Abstimmung pro Option (verfuegbar / vielleicht / nicht)
+    const tog = document.createElement('div');
+    tog.className = 'opt-toggle';
+    tog.appendChild(buildTerminTg('yes',   'Kann',       myVote === 'yes',   id));
+    tog.appendChild(buildTerminTg('maybe', 'Vielleicht', myVote === 'maybe', id));
+    tog.appendChild(buildTerminTg('no',    'Kann nicht', myVote === 'no',    id));
+    card.appendChild(tog);
+
+    // Aktionen: als Event-Termin uebernehmen + Option loeschen
+    const actions = document.createElement('div');
+    actions.className = 'termin-actions';
+    const adopt = document.createElement('button');
+    adopt.type = 'button'; adopt.className = 'termin-adopt';
+    adopt.textContent = 'Als Termin übernehmen';
+    adopt.addEventListener('click', () => adoptTermin(id));
+    actions.appendChild(adopt);
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'termin-del';
+    del.setAttribute('aria-label', 'Option löschen');
+    del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>';
+    del.addEventListener('click', () => removeTerminOption(id));
+    actions.appendChild(del);
+    card.appendChild(actions);
+    return card;
+  }
+  function buildTerminTg(kind, label, on, optId){
+    const ICON = {
+      yes:   '<path d="M5 13l4 4L19 7"/>',
+      maybe: '<path d="M12 8v5"/><circle cx="12" cy="16.5" r="0.7"/>',
+      no:    '<path d="M6 6l12 12M18 6L6 18"/>'
+    };
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tg ' + kind + (on ? ' on' : '');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' + ICON[kind] + '</svg>';
+    const sp = document.createElement('span'); sp.textContent = label;
+    btn.appendChild(sp);
+    btn.addEventListener('click', () => setTerminVote(optId, kind));
+    return btn;
+  }
+  function buildTerminPeople(id, memberIds){
+    const votes = (terminData && terminData.votes) || {};
+    const yesUids = memberIds.filter(uid => votes[uid] && votes[uid][id] === 'yes');
+    if (!yesUids.length) return null;
+    const wrap = document.createElement('div'); wrap.className = 'opt-people';
+    yesUids.slice(0, 8).forEach(uid => {
+      const m = (membersCache && membersCache[uid]) ? membersCache[uid] : { name: '?' };
+      const tmp = document.createElement('div');
+      tmp.innerHTML = avatarMarkup(m, 'av-sm');             // bestehende Avatar-Logik (0027), XSS-sicher
+      if (tmp.firstChild) wrap.appendChild(tmp.firstChild);
+    });
+    return wrap;
+  }
+  // Datums-Option vorschlagen: Single-Date-Picker (0007) -> push nach options.
+  function addTerminOption(){
+    const r = terminOptionsRef(); if (!r) return;
+    openSingleDate({
+      title: 'Termin vorschlagen', iso: '',
+      onPick: ({ iso }) => {
+        const d = isoDateOrNull(iso); if (!d) return;
+        try { push(r, { date: d, createdBy: state.uid || null, createdAt: serverTimestamp() }); } catch(e){ /* Listener reconciled */ }
+        const sc = $('sdpick'); if (sc) sc.classList.remove('open');   // Picker nach der Wahl schliessen
+      }
+    });
+  }
+  // Eigene Stimme setzen/zuruecknehmen (Toggle: gleiche Stufe erneut -> Stimme entfernt).
+  async function setTerminVote(optId, status){
+    const vr = terminVoteRef(state.uid, optId); if (!vr) return;
+    const cur = (terminData.votes && state.uid && terminData.votes[state.uid]) ? terminData.votes[state.uid][optId] : null;
+    try {
+      if (cur === status) await remove(vr);                // erneut auf aktive Stufe -> zuruecknehmen
+      else await set(vr, status);
+    } catch(e){ /* Live-Listener reconciled */ }
+  }
+  // Option als Event-Termin uebernehmen: setzt startDate/endDate (+ Anzeige-dateRange). Eintages.
+  async function adoptTermin(optId){
+    if (!state.room || !terminEventId) return;
+    const opt = (terminData.options || {})[optId];
+    const d = isoDateOrNull(opt && opt.date); if (!d) return;
+    try {
+      await update(ref(db, `rooms/${state.room}/events/${terminEventId}`),
+        { startDate: d, endDate: d, dateRange: fmtFullDate(d) });
+      toast('Termin übernommen');
+    } catch(e){ /* Live-Listener reconciled */ }
+  }
+  // Option entfernen + verwaiste Stimmen je Mitglied fuer diese Option mit aufraeumen (best effort).
+  async function removeTerminOption(optId){
+    const orf = terminOptionRef(optId); if (!orf) return;
+    const votes = (terminData && terminData.votes) || {};
+    try { await remove(orf); } catch(e){}
+    Object.keys(votes).forEach(uid => {
+      if (votes[uid] && votes[uid][optId] != null){
+        const vr = terminVoteRef(uid, optId);
+        if (vr){ try { remove(vr); } catch(e){} }
+      }
+    });
+  }
+  // Live-Subtitle der Modul-Liste: "X von Y haben abgestimmt" / "noch keine Termine".
+  function terminSubtitle(ev){
+    const tf = ev && ev.terminfindung;
+    const options = (tf && tf.options) || {};
+    if (!Object.keys(options).length) return 'noch keine Termine';
+    const memberIds = Object.keys(eventMembers(ev));
+    return terminVotedCount(tf, memberIds) + ' von ' + memberIds.length + ' haben abgestimmt';
+  }
+  function updateTerminSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="termin"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? terminSubtitle(ev) : 'noch keine Termine';
+  }
+  // Voll-Datum "1. Aug 2026" aus ISO (eigene Formatierung -> keine Date-TZ-Falle; XSS-sicher).
+  function fmtFullDate(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? (+m[3]) + '. ' + (MON_ABBR_DE[+m[2] - 1] || '') + ' ' + m[1] : '';
+  }
+  // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Button -> Option vorschlagen.
+  if (terminScreen){
+    const tMod = document.querySelector('#detail .mod[data-open="termin"]');
+    if (tMod) tMod.addEventListener('click', openTermin);   // zusaetzlich zum generischen [data-open]
+    const tClose = terminScreen.querySelector('[data-close="termin"]');
+    if (tClose) tClose.addEventListener('click', closeTermin);
+    const addBtn = $('termin-add-btn'); if (addBtn) addBtn.addEventListener('click', addTerminOption);
+  }
+  if (DEBUG) Object.assign(window.__cp, { openTermin, renderTermin, terminTally, terminVotedCount, terminSubtitle, fmtFullDate });
+
 
   // ---- Gesamt-Besorgliste (Ticket 0030): raumweite Aggregat-Ansicht ----
   // Buendelt OFFENE (done==false) Packlisten-Items ueber ALLE Events des Raums aus dem
