@@ -90,7 +90,7 @@
   .screen > * { flex-shrink:0; }
   #detail { z-index:100; }
   #termin, #kosten, #reiseplan, #packliste, #voting, #flug, #buchungen, #treffpunkt { z-index:200; }
-  #datepick, #grouppick, #sdpick, #rp-edit, #voting-new { z-index:400; }
+  #datepick, #grouppick, #sdpick, #rp-edit, #voting-new, #flug-edit { z-index:400; }
   .navbar { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; min-height:52px; background:rgba(0,0,0,0.55); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); }
   .nav-btn { display:flex; align-items:center; gap:2px; border:none; background:none; color:var(--accent); font-size:17px; cursor:pointer; padding:6px 8px; letter-spacing:-0.3px; }
   .nav-btn svg { width:20px; height:20px; }
@@ -493,6 +493,9 @@
   .flight-meta { display:flex; justify-content:space-between; margin-top:16px; padding-top:14px; border-top:0.5px solid var(--separator); }
   .fm-item { font-size:13px; color:var(--label-2); letter-spacing:-0.1px; }
   .fm-item b { color:var(--label); font-weight:600; display:block; margin-top:2px; }
+  /* flug -- Karte klickbar (Editor), Ticket 0044; Look unveraendert */
+  .flight { cursor:pointer; transition:transform 0.15s var(--ease); }
+  .flight:active { transform:scale(0.985); }
   /* buchungen */
   .file-row { display:flex; align-items:center; gap:13px; padding:13px 16px; position:relative; cursor:pointer; }
   .file-row:active { background:var(--card-2); }
@@ -849,7 +852,7 @@
       </div>
       <div class="mod" data-open="flug">
         <div class="mod-icon" style="background:#00C7BE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
-        <div class="mod-body"><div class="mod-title">Flug</div><div class="mod-sub">Hin 12.7. · 06:40 ab BER</div></div>
+        <div class="mod-body"><div class="mod-title">Flug</div><div class="mod-sub">noch kein Flug</div></div>
         <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="mod" data-open="buchungen">
@@ -1085,32 +1088,36 @@
       <button class="nav-btn" data-close="flug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Event</button>
       <div class="nav-mid">Flug</div><div class="nav-spacer"></div>
     </div>
-    <div class="section-label">Hinflug · Sa 12. Juli</div>
-    <div class="flight">
-      <div class="flight-route">
-        <div class="airport"><div class="ap-code">BER</div><div class="ap-time">06:40</div></div>
-        <div class="flight-mid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg><div class="flight-line"></div></div>
-        <div class="airport r"><div class="ap-code">PMI</div><div class="ap-time">09:15</div></div>
-      </div>
-      <div class="flight-meta">
-        <div class="fm-item">Airline<b>Eurowings</b></div>
-        <div class="fm-item">Flug<b>EW 7634</b></div>
-        <div class="fm-item">Dauer<b>2h 35m</b></div>
-      </div>
+    <!-- ECHTES Flug-Modul (Ticket 0044): manuelle Flug-Eintraege je Event (KEIN Flug-API).
+         Inhalt aus rooms/{room}/events/{id}/fluege (renderFlug), sortiert nach Datum + Abflug. -->
+    <div class="intro">Tragt eure Flüge manuell ein – Hin, Rück, Zwischenstopps. Jeder Eintrag hat Von/Nach, Datum und Abflugzeit; Ankunft, Airline und Flugnummer sind optional.</div>
+    <div id="flug-list"></div>
+    <div class="mod-empty" id="flug-empty">Noch kein Flug eingetragen. Tippe unten auf „Flug hinzufügen“, um den ersten anzulegen.</div>
+    <button class="wide-action" id="flug-add-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Flug hinzufügen</button>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- FLUG: Eintrag anlegen/bearbeiten/loeschen (Ticket 0044) -- Datum via Single-Date-Picker (0023) -->
+  <div class="screen" id="flug-edit">
+    <div class="navbar">
+      <button class="nav-cancel" id="flug-edit-cancel" type="button">Abbrechen</button>
+      <div class="nav-mid" id="flug-edit-title">Flug</div>
+      <button class="nav-done" id="flug-save-btn" type="button">Speichern</button>
     </div>
-    <div class="section-label">Rückflug · Sa 19. Juli</div>
-    <div class="flight">
-      <div class="flight-route">
-        <div class="airport"><div class="ap-code">PMI</div><div class="ap-time">18:20</div></div>
-        <div class="flight-mid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg><div class="flight-line"></div></div>
-        <div class="airport r"><div class="ap-code">BER</div><div class="ap-time">20:55</div></div>
-      </div>
-      <div class="flight-meta">
-        <div class="fm-item">Airline<b>Eurowings</b></div>
-        <div class="fm-item">Flug<b>EW 7635</b></div>
-        <div class="fm-item">Dauer<b>2h 35m</b></div>
-      </div>
+    <div class="section-label">Strecke</div>
+    <div class="fgroup">
+      <div class="frow"><label>Von</label><input id="flug-from" placeholder="z.B. BER oder Berlin" maxlength="40" autocomplete="off"></div>
+      <div class="frow"><label>Nach</label><input id="flug-to" placeholder="z.B. PMI oder Palma" maxlength="40" autocomplete="off"></div>
+      <div class="frow" id="flug-date-row"><label>Datum</label><span class="fvalue" id="flug-date-val">Datum wählen <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></span></div>
+      <div class="frow"><label>Abflug</label><input id="flug-dep" placeholder="z.B. 06:40" inputmode="numeric" maxlength="5" autocomplete="off"></div>
+      <div class="frow"><label>Ankunft</label><input id="flug-arr" placeholder="optional, z.B. 09:15" inputmode="numeric" maxlength="5" autocomplete="off"></div>
     </div>
+    <div class="section-label">Details (optional)</div>
+    <div class="fgroup">
+      <div class="frow"><label>Airline</label><input id="flug-airline" placeholder="z.B. Eurowings" maxlength="40" autocomplete="off"></div>
+      <div class="frow"><label>Flugnr.</label><input id="flug-no" placeholder="z.B. EW 7634" maxlength="20" autocomplete="off"></div>
+    </div>
+    <button class="kexp-delete" id="flug-delete" type="button" hidden>Flug löschen</button>
     <div class="bottom-pad"></div>
   </div>
 
@@ -2056,6 +2063,8 @@
     updateReiseplanSubtitle(d.id);
     // Voting-Subtitle live aus dem Event-Cache (Ticket 0043).
     updateVotingSubtitle(d.id);
+    // Flug-Subtitle live aus dem Event-Cache (Ticket 0044).
+    updateFlugSubtitle(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -4500,6 +4509,258 @@
       () => { rpLat = null; rpLon = null; });
   }
   if (DEBUG) Object.assign(window.__cp, { openReiseplan, renderReiseplan, reiseplanSubtitle, rpSortedIds, rpNextOrder });
+
+  // ---- Flug-Modul (Ticket 0044): manuelle Flug-Eintraege pro Event ---------------------
+  // Speicher: rooms/{room}/events/{id}/fluege/{flugId} =
+  //   { from, to, date(ISO), dep(HH:MM)?, arr(HH:MM)?, airline?, flightNo?, createdBy, createdAt }.
+  // Liegt UNTER events/{id} -> P6-Rules (events member-write/read) decken es ab; KEINE
+  // Rules-Aenderung. KEIN Flug-API (bewusste Entscheidung) -> rein manuelle Eingabe ueber den
+  // Editor #flug-edit (Muster wie #rp-edit 0035). Datum via Single-Date-Picker (0023). Look ueber
+  // die bestehenden .flight/.airport/.flight-meta-CSS (prototype-v8). XSS: from/to/Zeit/Airline/
+  // Flugnr. ausschliesslich via textContent/DOM-Bau (kein innerHTML aus Daten). TZ-sicher:
+  // Datum als ISO-String gespeichert + nur string-/komponentenbasiert formatiert (kein UTC-Shift).
+  // Sortierung: date (ISO) aufsteigend, dann dep (HH:MM), stabil ueber createdAt/Key.
+  const flugScreen = $('flug');
+  const flugEditScreen = $('flug-edit');
+  let flugUnsub = null;            // aktiver onValue-Detacher
+  let flugData = {};               // letzter RTDB-Stand { flugId: {...} }
+  let flugEventId = null;          // Event, dessen Flug gerade offen ist
+  let flugEditId = null;           // im Editor bearbeiteter Eintrag (null = neuer Flug)
+  let flugDateISO = '';            // im Editor gewaehltes Datum (ISO; '' = noch keins)
+  const FLUG_WD_DE = ['So','Mo','Di','Mi','Do','Fr','Sa'];   // getDay() 0=So
+
+  function flugBaseRef(){
+    return (state.room && flugEventId)
+      ? ref(db, `rooms/${state.room}/events/${flugEventId}/fluege`) : null;
+  }
+  function flugRef(flugId){
+    return (state.room && flugEventId && flugId)
+      ? ref(db, `rooms/${state.room}/events/${flugEventId}/fluege/${flugId}`) : null;
+  }
+  function openFlug(){
+    flugEventId = currentDetailId;                     // an das offene Event koppeln (0007/0019)
+    if (flugUnsub){ flugUnsub(); flugUnsub = null; }   // evtl. altes Abo zuerst loesen
+    const r = flugBaseRef();
+    if (!r){ flugData = {}; renderFlug(); return; }
+    flugUnsub = onValue(r, snap => { flugData = snap.val() || {}; renderFlug(); });
+  }
+  function closeFlug(){
+    if (flugUnsub){ flugUnsub(); flugUnsub = null; }
+    flugEventId = null;
+  }
+  // ISO "2026-07-12" -> "12.7." (Tag.Monat., App-Konvention ohne fuehrende Null); kein Date noetig.
+  function flugDateShort(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? (+m[3]) + '.' + (+m[2]) + '.' : '';
+  }
+  // ISO -> "Sa, 12. Juli 2026" (Wochentag lokal aus Komponenten -> kein UTC-Parse/-Shift).
+  function flugDateLong(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return '';
+    const y = +m[1], mo = +m[2] - 1, d = +m[3];
+    const wd = FLUG_WD_DE[new Date(y, mo, d).getDay()] || '';
+    return (wd ? wd + ', ' : '') + d + '. ' + MONTHS_DE[mo] + ' ' + y;
+  }
+  // "" -> "" (leer/erlaubt); gueltige HH:MM -> normalisiert "HH:MM"; ungueltig -> null (blockt Save).
+  function flugNormTime(s){
+    const t = String(s == null ? '' : s).trim();
+    if (!t) return '';
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+    if (!m) return null;
+    const h = +m[1], mi = +m[2];
+    if (h > 23 || mi > 59) return null;
+    return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+  }
+  // Fluege sortiert: Datum (ISO) aufsteigend, dann Abflug (HH:MM), dann createdAt, dann Key (stabil).
+  function flugSortedIds(data){
+    const fl = (data && typeof data === 'object') ? data : {};
+    return Object.keys(fl).sort((a, b) => {
+      const da = (fl[a] && fl[a].date) || '', db2 = (fl[b] && fl[b].date) || '';
+      if (da !== db2) return da < db2 ? -1 : 1;
+      const pa = (fl[a] && fl[a].dep) || '', pb = (fl[b] && fl[b].dep) || '';
+      if (pa !== pb) return pa < pb ? -1 : 1;
+      const ca = (fl[a] && +fl[a].createdAt) || 0, cb = (fl[b] && +fl[b].createdAt) || 0;
+      if (ca !== cb) return ca - cb;
+      return a < b ? -1 : 1;
+    });
+  }
+  function renderFlug(){
+    const list = $('flug-list'), empty = $('flug-empty');
+    if (!list) return;
+    const ids = flugSortedIds(flugData);
+    list.innerHTML = '';                               // kein innerHTML aus Daten -> DOM-Bau pro Flug
+    if (!ids.length){
+      if (empty) empty.style.display = '';
+      list.style.display = 'none';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.style.display = '';
+    ids.forEach(id => list.appendChild(buildFlug(id, flugData[id] || {})));
+  }
+  // Ein Flug = Datum-Label (Wochentag) + klickbare .flight-Karte (Route + optionale Meta).
+  function buildFlug(id, f){
+    const frag = document.createDocumentFragment();
+    const dl = flugDateLong(f.date);
+    if (dl){
+      const lab = document.createElement('div');
+      lab.className = 'section-label';
+      lab.textContent = dl;                            // textContent -> XSS-sicher
+      frag.appendChild(lab);
+    }
+    const card = document.createElement('div');
+    card.className = 'flight'; card.dataset.id = id;
+    card.addEventListener('click', () => openFlugEdit(id));   // Karte -> Editor (anlegen/bearbeiten/loeschen)
+
+    const route = document.createElement('div'); route.className = 'flight-route';
+    route.appendChild(buildFlugAirport((f.from || '').trim() || '?', (f.dep || '').trim(), false));
+    const mid = document.createElement('div'); mid.className = 'flight-mid';
+    mid.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg><div class="flight-line"></div>';
+    route.appendChild(mid);
+    route.appendChild(buildFlugAirport((f.to || '').trim() || '?', (f.arr || '').trim(), true));
+    card.appendChild(route);
+
+    const airline = (f.airline || '').trim(), no = (f.flightNo || '').trim();
+    if (airline || no){
+      const meta = document.createElement('div'); meta.className = 'flight-meta';
+      if (airline) meta.appendChild(buildFlugMeta('Airline', airline));
+      if (no) meta.appendChild(buildFlugMeta('Flug', no));
+      card.appendChild(meta);
+    }
+    frag.appendChild(card);
+    return frag;
+  }
+  function buildFlugAirport(code, time, right){
+    const ap = document.createElement('div'); ap.className = 'airport' + (right ? ' r' : '');
+    const c = document.createElement('div'); c.className = 'ap-code'; c.textContent = code;   // XSS-sicher
+    ap.appendChild(c);
+    if (time){ const t = document.createElement('div'); t.className = 'ap-time'; t.textContent = time; ap.appendChild(t); }
+    return ap;
+  }
+  function buildFlugMeta(label, val){
+    const it = document.createElement('div'); it.className = 'fm-item';
+    it.appendChild(document.createTextNode(label));
+    const b = document.createElement('b'); b.textContent = val; it.appendChild(b);            // XSS-sicher
+    return it;
+  }
+  // Editor oeffnen: id == null -> neu, sonst bestehenden Flug vorbelegen.
+  function openFlugEdit(id){
+    flugEditId = id || null;
+    const f = (id && flugData[id]) ? flugData[id] : {};
+    const t = $('flug-edit-title'); if (t) t.textContent = id ? 'Flug bearbeiten' : 'Flug hinzufügen';
+    flugSetVal('flug-from', f.from || '');
+    flugSetVal('flug-to', f.to || '');
+    flugSetVal('flug-dep', f.dep || '');
+    flugSetVal('flug-arr', f.arr || '');
+    flugSetVal('flug-airline', f.airline || '');
+    flugSetVal('flug-no', f.flightNo || '');
+    flugDateISO = /^\d{4}-\d{2}-\d{2}$/.test(String(f.date || '')) ? f.date : '';
+    updateFlugDateVal();
+    const del = $('flug-delete'); if (del) del.hidden = !id;
+    const sc = $('flug-edit'); if (sc){ sc.scrollTop = 0; sc.classList.add('open'); }
+    const fF = $('flug-from'); if (fF) setTimeout(() => { try { fF.focus(); } catch(e){} }, 60);
+  }
+  function flugSetVal(elId, v){ const el = $(elId); if (el) el.value = v; }
+  function closeFlugEdit(){
+    const sc = $('flug-edit'); if (sc) sc.classList.remove('open');
+    flugEditId = null;
+  }
+  function updateFlugDateVal(){
+    const el = $('flug-date-val'); if (!el) return;
+    const txt = flugDateISO ? flugDateLong(flugDateISO) : '';
+    el.innerHTML = (txt ? esc(txt) + ' ' : 'Datum wählen ') + CHEVRON;   // esc -> XSS-sicher, CHEVRON statisch
+  }
+  function flugMarkInvalid(el){
+    if (!el) return;
+    const frow = el.closest('.frow');
+    if (frow){ frow.classList.remove('invalid'); void frow.offsetWidth; frow.classList.add('invalid'); }
+    try { el.focus(); } catch(e){}
+  }
+  function flugMarkRowInvalid(rowId){
+    const frow = $(rowId);
+    if (frow){ frow.classList.remove('invalid'); void frow.offsetWidth; frow.classList.add('invalid'); }
+  }
+  // Speichern: Pflicht = Von + Nach + Datum + Abflug. Optional = Ankunft + Airline + Flugnr.
+  // Zeiten werden auf HH:MM geprueft (ungueltig -> Save blockt). Neu -> push; bearbeiten -> update
+  // (geleerte optionale Felder -> null -> in RTDB entfernt).
+  async function saveFlug(){
+    const fFrom = $('flug-from'), fTo = $('flug-to');
+    const from = ((fFrom && fFrom.value) || '').trim();
+    const to = ((fTo && fTo.value) || '').trim();
+    if (!from){ flugMarkInvalid(fFrom); return; }
+    if (!to){ flugMarkInvalid(fTo); return; }
+    if (!flugDateISO){ flugMarkRowInvalid('flug-date-row'); return; }
+    const dep = flugNormTime(($('flug-dep') && $('flug-dep').value) || '');
+    if (!dep){ flugMarkInvalid($('flug-dep')); return; }            // leer ODER ungueltig -> Pflicht/Format
+    const arr = flugNormTime(($('flug-arr') && $('flug-arr').value) || '');
+    if (arr === null){ flugMarkInvalid($('flug-arr')); return; }    // nur Format-Fehler blockt; '' erlaubt
+    const airline = (($('flug-airline') && $('flug-airline').value) || '').trim();
+    const no = (($('flug-no') && $('flug-no').value) || '').trim();
+    if (flugEditId){
+      const r = flugRef(flugEditId); if (!r) return;
+      try {
+        await update(r, {
+          from, to, date: flugDateISO, dep,
+          arr: arr || null,                            // leer -> null -> in RTDB entfernt
+          airline: airline || null,
+          flightNo: no || null
+        });
+      } catch(e){ /* Live-Listener reconciled */ }
+    } else {
+      const base = flugBaseRef(); if (!base) return;
+      const obj = { from, to, date: flugDateISO, dep, createdBy: state.uid || null, createdAt: serverTimestamp() };
+      if (arr) obj.arr = arr;
+      if (airline) obj.airline = airline;
+      if (no) obj.flightNo = no;
+      try { await push(base, obj); } catch(e){ /* Live-Listener reconciled */ }
+    }
+    closeFlugEdit();
+  }
+  async function removeFlug(){
+    if (!flugEditId){ closeFlugEdit(); return; }
+    const r = flugRef(flugEditId);
+    if (r){ try { await remove(r); } catch(e){ /* Live-Listener reconciled */ } }
+    closeFlugEdit();
+  }
+  // Live-Subtitle der Modul-Liste: fruehester Flug "<from> - <to> <dd.mm.> <dep>"; 0 -> "noch kein Flug".
+  // Laeuft gratis ueber den bestehenden events-Listener (fluege im Snapshot).
+  function flugSubtitle(ev){
+    const fl = ev && ev.fluege;
+    const ids = flugSortedIds(fl);
+    if (!ids.length) return 'noch kein Flug';
+    const f = (fl && fl[ids[0]]) || {};
+    const from = (f.from || '').trim() || '?';
+    const to = (f.to || '').trim() || '?';
+    let s = from + ' - ' + to;
+    const ds = flugDateShort(f.date); if (ds) s += ' ' + ds;
+    const dep = (f.dep || '').trim(); if (dep) s += ' ' + dep;
+    return s;
+  }
+  function updateFlugSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="flug"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? flugSubtitle(ev) : 'noch kein Flug';     // textContent -> XSS-sicher
+  }
+  // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Buttons -> Editor; Datum -> Picker.
+  if (flugScreen){
+    const fMod = document.querySelector('#detail .mod[data-open="flug"]');
+    if (fMod) fMod.addEventListener('click', openFlug);    // zusaetzlich zum generischen [data-open]
+    const fClose = flugScreen.querySelector('[data-close="flug"]');
+    if (fClose) fClose.addEventListener('click', closeFlug);
+    const addBtn = $('flug-add-btn'); if (addBtn) addBtn.addEventListener('click', () => openFlugEdit(null));
+  }
+  if (flugEditScreen){
+    const cancel = $('flug-edit-cancel'); if (cancel) cancel.addEventListener('click', closeFlugEdit);
+    const save = $('flug-save-btn'); if (save) save.addEventListener('click', saveFlug);
+    const del = $('flug-delete'); if (del) del.addEventListener('click', removeFlug);
+    const dateRow = $('flug-date-row');
+    if (dateRow) dateRow.addEventListener('click', () => openSingleDate({
+      title: 'Flugdatum', iso: flugDateISO,
+      onPick: ({ iso }) => { flugDateISO = iso; updateFlugDateVal(); const sc = $('sdpick'); if (sc) sc.classList.remove('open'); }
+    }));
+  }
+  if (DEBUG) Object.assign(window.__cp, { openFlug, renderFlug, flugSubtitle, flugSortedIds, flugDateShort, flugNormTime, flugDateLong });
 
   // ---- Speichern: neues Event anlegen (push) ODER bestehendes updaten (update) ----
   let creating = false;
