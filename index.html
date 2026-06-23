@@ -19,7 +19,12 @@
   body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:#000; color:var(--label); -webkit-font-smoothing:antialiased; display:flex; justify-content:center; }
   /* min-height: 100dvh folgt der dynamischen sichtbaren Hoehe (Mobile-URL-Bar),
      100vh bleibt Fallback fuer Browser ohne dvh-Support (Ticket 0005). */
-  .app { width:100%; max-width:430px; min-height:100vh; min-height:100dvh; background:var(--bg); display:flex; flex-direction:column; position:relative; overflow:hidden; }
+  /* overflow:clip statt hidden (Ticket 0050): clip erzeugt KEINEN Scroll-Container ->
+     .app ist nicht mehr programmatisch horizontal scrollbar. Der Auto-Fokus der Erstell-
+     Editoren (setTimeout-focus waehrend der 0.4s-Slide) loest sonst scrollIntoView aus und
+     schiebt .app.scrollLeft auf ~147 -> die rechts via translateX(100%) geparkten geschlossenen
+     Screens leakten ins Sichtfeld. clip clippt identisch wie hidden, ohne Scroll-Offset. */
+  .app { width:100%; max-width:430px; min-height:100vh; min-height:100dvh; background:var(--bg); display:flex; flex-direction:column; position:relative; overflow:clip; }
 
   /* HOME */
   .header { padding:14px 20px 8px; display:flex; align-items:flex-start; justify-content:space-between; }
