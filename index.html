@@ -2237,6 +2237,10 @@
     updateFlugSubtitle(d.id);
     // Buchungen-Subtitle live aus dem Event-Cache (Ticket 0045).
     updateBuchSubtitle(d.id);
+    // Packliste-/Kosten-/Treffpunkt-Subtitle live aus dem Event-Cache (Ticket 0049).
+    updatePacklisteSubtitle(d.id);
+    updateKostenSubtitle(d.id);
+    updateTreffpunktSubtitle(d.id);
   }
   // Offenes Detail live nachziehen (eigene/fremde Status-Aenderung, Auto-Status, Edit 0019)
   function refreshOpenDetail(){
@@ -2632,6 +2636,23 @@
     packAssignOverlay.classList.remove('open');
     packAssignOverlay.setAttribute('aria-hidden', 'true');
   }
+  // Live-Subtitle der Modul-Liste (Ticket 0049): "X von Y erledigt" (X = abgehakt, Y = Items);
+  // 0 Items -> "noch leer". Laeuft gratis ueber den bestehenden events-Listener (packliste im
+  // Snapshot); spiegelt die Zaehl-Logik des Packlisten-Screens (renderPackliste).
+  function packlisteSubtitle(ev){
+    const p = ev && ev.packliste;
+    const ids = (p && typeof p === 'object') ? Object.keys(p) : [];
+    if (!ids.length) return 'noch leer';
+    const done = ids.filter(k => p[k] && p[k].done).length;
+    return done + ' von ' + ids.length + ' erledigt';
+  }
+  function updatePacklisteSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="packliste"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? packlisteSubtitle(ev) : 'noch leer';   // textContent -> XSS-sicher
+  }
+  if (DEBUG) Object.assign(window.__cp, { packlisteSubtitle });
   // Wiring: Modulzeile oeffnet + abonniert; Zurueck loest das Abo; Eingabe/Enter -> anlegen.
   if (packScreen){
     const packMod = document.querySelector('#detail .mod[data-open="packliste"]');
@@ -2926,6 +2947,26 @@
     if (ir){ try { await remove(ir); } catch(e){} }
     closeKexp();
   }
+  // Live-Subtitle der Modul-Liste (Ticket 0049): Gesamtsumme der gueltigen Posten ("<Summe>"),
+  // sonst "<N> Posten"; keine -> "noch keine Kosten". Bewusst die robuste Kurzfassung statt der
+  // pro-Person-Settlement-Rechnung (korrekt-einfach vor falsch-detailliert). Gleiche Betrags-
+  // Validierung wie computeBalances (nur endliche, positive Betraege). Laeuft gratis ueber den
+  // bestehenden events-Listener (kosten im Snapshot).
+  function kostenSubtitle(ev){
+    const k = ev && ev.kosten;
+    const ids = (k && typeof k === 'object') ? Object.keys(k) : [];
+    if (!ids.length) return 'noch keine Kosten';
+    let sum = 0;
+    ids.forEach(id => { const a = Number(k[id] && k[id].amount); if (Number.isFinite(a) && a > 0) sum += a; });
+    if (sum > 0) return fmtEuro(sum);
+    return ids.length === 1 ? '1 Posten' : ids.length + ' Posten';
+  }
+  function updateKostenSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="kosten"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? kostenSubtitle(ev) : 'noch keine Kosten';   // textContent -> XSS-sicher
+  }
   if (kostenScreen){
     const kMod = document.querySelector('#detail .mod[data-open="kosten"]');
     if (kMod) kMod.addEventListener('click', openKosten);   // zusaetzlich zum generischen [data-open]
@@ -2938,7 +2979,7 @@
     const overlay = $('kexp');
     if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeKexp(); });
   }
-  if (DEBUG) Object.assign(window.__cp, { openKosten, computeBalances, parseAmount, fmtEuro });
+  if (DEBUG) Object.assign(window.__cp, { openKosten, computeBalances, parseAmount, fmtEuro, kostenSubtitle });
 
   // ---- Termin-Findung-Modul (Ticket 0034): echte, live-synchronisierte Datums-Abstimmung ----
   // Speicher unter events/{id}: terminfindung/options/{optId} = { date(ISO), createdBy, createdAt }
@@ -4441,6 +4482,26 @@
     if (note) obj.note = note;
     try { await set(r, obj); } catch(e){ /* Live-Listener reconciled */ }
   }
+  // Live-Subtitle der Modul-Liste (Ticket 0049): gesetzter Treffpunkt kurz (Ort ggf. + Zeit),
+  // sonst Zeit bzw. Notiz; nicht gesetzt -> "noch kein Treffpunkt". Laeuft gratis ueber den
+  // bestehenden events-Listener (treffpunkt im Snapshot).
+  function treffpunktSubtitle(ev){
+    const tp = (ev && ev.treffpunkt && typeof ev.treffpunkt === 'object') ? ev.treffpunkt : null;
+    if (!tp) return 'noch kein Treffpunkt';
+    const loc = (tp.location || '').trim();
+    const time = (tp.time || '').trim();
+    const note = (tp.note || '').trim();
+    if (loc) return time ? (loc + ' · ' + time) : loc;
+    if (time) return time;
+    if (note) return note;
+    return 'noch kein Treffpunkt';
+  }
+  function updateTreffpunktSubtitle(id){
+    const sub = document.querySelector('#detail .mod[data-open="treffpunkt"] .mod-sub');
+    if (!sub) return;
+    const ev = (id && lastEvents) ? lastEvents[id] : null;
+    sub.textContent = ev ? treffpunktSubtitle(ev) : 'noch kein Treffpunkt';   // textContent -> XSS-sicher
+  }
   if (tpScreen){
     const tpMod = document.querySelector('#detail .mod[data-open="treffpunkt"]');
     if (tpMod) tpMod.addEventListener('click', openTreffpunkt);   // zusaetzlich zum generischen [data-open]
@@ -4452,7 +4513,7 @@
       ({ label, lat, lon }) => { $('tp-loc').value = label; tpLat = coordOK(lat) ? Number(lat) : null; tpLon = coordOK(lon) ? Number(lon) : null; },
       () => { tpLat = null; tpLon = null; });
   }
-  if (DEBUG) Object.assign(window.__cp, { openTreffpunkt, renderTreffpunkt, saveTreffpunkt });
+  if (DEBUG) Object.assign(window.__cp, { openTreffpunkt, renderTreffpunkt, saveTreffpunkt, treffpunktSubtitle });
 
   // ---- Reiseplan-Modul (Ticket 0035): geordnete Stationsliste pro Event ----------------
   // Speicher: rooms/{room}/events/{id}/reiseplan/{stopId} =
