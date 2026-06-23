@@ -1628,6 +1628,20 @@
       // die eigene Avatar-Wahl nicht ueberschreiben. Das Google-Foto wird bewusst NICHT
       // geschrieben (nicht Avatar-Quelle).
       await update(ref(db, `rooms/${room}/members/${state.uid}`), { name, color: state.color });
+      // Ticket 0051 (Raum-Persistenz 1a): nach erfolgreichem Beitritt den zuletzt genutzten
+      // Raum + die Raumliste unter dem NEUEN Top-Level-Pfad users/{uid}/ ablegen -- Basis fuer
+      // Auto-Rejoin (Punkt 1a) und Raum-Switcher (1b). roomName = meta.name falls vorhanden
+      // (Vorbereitung 1b), sonst der Raum-Code. Best-effort: ist die users-Rule (noch) nicht
+      // in der Firebase-Konsole deployt, wird dieser Write DENIED -> Persistenz/Auto-Rejoin
+      // bleiben einfach aus, der Beitritt selbst (rooms/...) ist davon voellig unberuehrt.
+      const roomName = (metaSnap.val() && metaSnap.val().name) || room;
+      try {
+        await update(ref(db, `users/${state.uid}`), {
+          lastRoom: room,
+          [`rooms/${room}/joinedAt`]: serverTimestamp(),
+          [`rooms/${room}/name`]: roomName
+        });
+      } catch (e) { /* users-Rule (noch) nicht deployt -> ohne Effekt, Join unberuehrt */ }
       // Home zeigen + Live-Listener
       $('onboarding').classList.remove('open');
       subscribeRoom(room);
@@ -1849,13 +1863,38 @@
 
   // Nach Anmeldung der Raum-Flow: ?room=CODE -> direkt beitreten (Identitaet aus Google),
   // sonst Onboarding (Raum-Code waehlen). Reload bleibt dank Firebase-Auth angemeldet.
-  function startRoomFlow(){
+  async function startRoomFlow(){
     $('signin').classList.remove('open');
     const r = urlRoom();
-    if (r){
+    if (r){                                    // ?room= in der URL gewinnt IMMER (Ticket 0051, Ziel 3)
       $('onboarding').classList.remove('open');
       join().catch(() => showOnboarding());
-    } else {
+      return;
+    }
+    // Ticket 0051 (Ziel 2): kein ?room= -> Auto-Rejoin in den zuletzt genutzten Raum
+    // (users/{uid}/lastRoom). Best-effort: ist die users-Rule (noch) nicht deployt oder
+    // existiert kein lastRoom, faellt der Read aus/leer -> normales Onboarding. lastRoom
+    // wird dabei NIE geloescht, kein Crash (Fallback laut Ticket).
+    let lastRoom = null;
+    try {
+      if (state.uid){
+        const snap = await get(ref(db, `users/${state.uid}/lastRoom`));
+        lastRoom = sanitizeRoom(snap.val());
+      }
+    } catch (e) { lastRoom = null; }
+    if (!lastRoom){ showOnboarding(); return; }
+    // URL auf ?room=<lastRoom> setzen -> join() nimmt exakt den ?room=-Pfad (gleicher
+    // Code-Pfad wie ein geteilter Link). join() haelt die URL anschliessend selbst; das
+    // hier ist nur die Eingabe fuer urlRoom().
+    const u = new URL(location.href); u.searchParams.set('room', lastRoom);
+    history.replaceState(null, '', u);
+    try {
+      await join();
+    } catch (e) {
+      // Auto-Rejoin gescheitert (z.B. toter Raum) -> URL/Raum zuruecksetzen, Leer-Onboarding.
+      const u2 = new URL(location.href); u2.searchParams.delete('room');
+      history.replaceState(null, '', u2);
+      state.room = null;
       showOnboarding();
     }
   }
