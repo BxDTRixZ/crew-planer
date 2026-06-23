@@ -596,6 +596,15 @@
   .ob-join { width:100%; margin-top:14px; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; box-shadow:0 4px 16px rgba(94,92,230,0.4); transition:transform 0.15s var(--ease); }
   .ob-join:active { transform:scale(0.97); }
   .ob-hint { font-size:13px; color:var(--label-2); text-align:center; margin-top:14px; letter-spacing:-0.1px; line-height:1.4; }
+  /* Raum-Wechsler (Ticket 0053): Raum-Code antippbar + Liste/Beitreten/Verlassen-Screen. */
+  #room-code .rc-info { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  #room-code .rc-info:active { opacity:0.6; }
+  .rs-row { gap:8px; }
+  .rs-pick { flex:1; display:flex; align-items:center; gap:10px; background:none; border:none; padding:0; color:var(--label); font-size:16px; font-family:inherit; letter-spacing:-0.3px; text-align:left; cursor:pointer; min-width:0; }
+  .rs-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rs-cur-tag { flex-shrink:0; font-size:11px; font-weight:600; color:var(--accent-text); background:var(--card-2); padding:2px 8px; border-radius:var(--r-pill); letter-spacing:0; }
+  .rs-leave { flex-shrink:0; background:none; border:none; color:var(--red); font-size:14px; font-family:inherit; cursor:pointer; padding:6px 4px; letter-spacing:-0.2px; }
+  .rs-leave:active { opacity:0.6; }
   /* Sign-in-Gate (Ticket 0024): Pflicht-Login mit Google. Liegt UEBER allem (z-index 700 >
      Onboarding 600) und ist per Default offen -> vor der Anmeldung ist NICHTS vom Raum-/
      Event-Inhalt sichtbar. onAuthStateChanged schaltet open/zu. */
@@ -706,8 +715,8 @@
       <div class="crew-body">
         <!-- Raum-Code sichtbar + teilen (Ticket 0003) -->
         <div class="room-code" id="room-code">
-          <div class="rc-info">
-            <div class="rc-label">Raum-Code</div>
+          <div class="rc-info" id="rc-info" role="button" tabindex="0" aria-label="Raum wechseln">
+            <div class="rc-label">Raum-Code · Wechseln</div>
             <div class="rc-value" id="rc-code">––––––</div>
           </div>
           <button class="rc-share" id="rc-share" type="button" aria-label="Raum teilen">
@@ -1270,6 +1279,25 @@
     <div class="bottom-pad"></div>
   </div>
 
+  <!-- RAUM-WECHSLER (Ticket 0053, 1b): eigene Raeume + Beitreten + Verlassen.
+       Geoeffnet ueber Tap auf den Raum-Code (renderRoomCode). Slide-in wie die Module. -->
+  <div class="screen" id="roomswitch">
+    <div class="navbar">
+      <button class="nav-btn" id="rs-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg> Zurück</button>
+      <div class="nav-mid">Räume</div><div class="nav-spacer"></div>
+    </div>
+    <div class="section-label">Meine Räume</div>
+    <!-- rs-list wird LIVE aus users/{uid}/rooms gerendert (renderRoomSwitchList). -->
+    <div class="fgroup" id="rs-list" style="margin:0 18px"></div>
+    <div class="mod-empty" id="rs-empty" style="display:none">Noch keine gespeicherten Räume.</div>
+    <div class="section-label">Neuem Raum beitreten</div>
+    <div class="ob-field" style="margin:0 18px">
+      <input id="rs-room" class="ob-input" placeholder="Raum-Code" autocomplete="off" autocapitalize="characters" maxlength="12">
+      <button class="ob-newroom" id="rs-join" type="button">Beitreten</button>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
   <!-- CREATE SHEET -->
   <div class="backdrop" id="backdrop"></div>
   <div class="sheet" id="sheet">
@@ -1596,55 +1624,63 @@
     ob.classList.add('open');
     if (!r) setTimeout(() => { const f = $('ob-room'); if (f) f.focus(); }, 60);
   }
+  // Gemeinsamer Beitritts-Kern (Ticket 0053): die RTDB-Writes + frischen Listener, die
+  // SOWOHL der Boot/Onboarding-Join (join) ALS AUCH der Laufzeit-Wechsel (switchRoom)
+  // brauchen -- EIN Pfad, damit beide identisch beitreten (members-Write, meta/ownerUid
+  // falls Raum neu, users/-Write fuer Auto-Rejoin/Switcher) und frische Listener setzen.
+  // Voraussetzung bei einem Wechsel: raum-spezifischer Alt-State ist via resetRoomState()
+  // bereits weg (switchRoom besorgt das).
+  async function enterRoom(room){
+    state.room = room; state.color = colorFor(state.uid + ':' + room);
+    // Raum in der URL halten
+    const u = new URL(location.href); u.searchParams.set('room', room);
+    history.replaceState(null, '', u);
+    // meta anlegen, falls Raum neu (createdAt idempotent). Beim Anlegen ownerUid
+    // (= Ersteller-uid) am Raum hinterlegen (Ticket 0024; Vorbereitung Host-Rechte +
+    // P6). NUR beim Anlegen -- Beitreten zu fremdem Raum ueberschreibt ownerUid nicht.
+    const metaRef = ref(db, `rooms/${room}/meta`);
+    const metaSnap = await get(metaRef);
+    if (!metaSnap.exists()){
+      await set(metaRef, { createdAt: serverTimestamp() });
+      await set(ref(db, `rooms/${room}/ownerUid`), state.uid);
+    }
+    // Mitgliedschaft uid-basiert: members/{uid} (Ticket 0024). Doppeltes Beitreten
+    // desselben Kontos schreibt denselben Schluessel -> genau EIN Mitglied (kein
+    // Self-Duplikat), ganz ohne localStorage-memberId-Logik -- die uid IST die stabile
+    // Identitaet (Reload-Persistenz uebernimmt Firebase-Auth).
+    state.memberId = state.uid;
+    // update (nicht set): schreibt nur Name/Farbe und laesst einen bereits gewaehlten
+    // Avatar (Ticket 0027) unangetastet. Ein erneuter Join (Reload/Wiedereintritt) darf
+    // die eigene Avatar-Wahl nicht ueberschreiben. Das Google-Foto wird bewusst NICHT
+    // geschrieben (nicht Avatar-Quelle).
+    await update(ref(db, `rooms/${room}/members/${state.uid}`), { name: state.name || 'Unbenannt', color: state.color });
+    // Ticket 0051 (Raum-Persistenz 1a): nach erfolgreichem Beitritt den zuletzt genutzten
+    // Raum + die Raumliste unter dem NEUEN Top-Level-Pfad users/{uid}/ ablegen -- Basis fuer
+    // Auto-Rejoin (Punkt 1a) und Raum-Switcher (1b). roomName = meta.name falls vorhanden
+    // (Vorbereitung 1b), sonst der Raum-Code. Best-effort: ist die users-Rule (noch) nicht
+    // in der Firebase-Konsole deployt, wird dieser Write DENIED -> Persistenz/Auto-Rejoin
+    // bleiben einfach aus, der Beitritt selbst (rooms/...) ist davon voellig unberuehrt.
+    const roomName = (metaSnap.val() && metaSnap.val().name) || room;
+    try {
+      await update(ref(db, `users/${state.uid}`), {
+        lastRoom: room,
+        [`rooms/${room}/joinedAt`]: serverTimestamp(),
+        [`rooms/${room}/name`]: roomName
+      });
+    } catch (e) { /* users-Rule (noch) nicht deployt -> ohne Effekt, Join unberuehrt */ }
+    // Live-Listener frisch setzen (subscribeRoom meldet etwaige alte zuerst ab).
+    subscribeRoom(room);
+  }
   let joining = false;
   async function join(){
     if (joining) return;                       // Doppel-Submit (Doppelklick) abfangen
     if (!state.uid){ showSignIn(); return; }    // ohne Anmeldung kein Beitritt (Auth-Gate, 0024)
-    const name = state.name || 'Unbenannt';     // Identitaet aus Google -- keine Namenseingabe mehr
     let room = urlRoom() || sanitizeRoom($('ob-room').value);
     if (!room){ room = genRoomCode(); }
     joining = true; $('ob-join').disabled = true;
     try {
-      state.room = room; state.color = colorFor(state.uid + ':' + room);
-      // Raum in der URL halten
-      const u = new URL(location.href); u.searchParams.set('room', room);
-      history.replaceState(null, '', u);
-      // meta anlegen, falls Raum neu (createdAt idempotent). Beim Anlegen ownerUid
-      // (= Ersteller-uid) am Raum hinterlegen (Ticket 0024; Vorbereitung Host-Rechte +
-      // P6). NUR beim Anlegen -- Beitreten zu fremdem Raum ueberschreibt ownerUid nicht.
-      const metaRef = ref(db, `rooms/${room}/meta`);
-      const metaSnap = await get(metaRef);
-      if (!metaSnap.exists()){
-        await set(metaRef, { createdAt: serverTimestamp() });
-        await set(ref(db, `rooms/${room}/ownerUid`), state.uid);
-      }
-      // Mitgliedschaft uid-basiert: members/{uid} (Ticket 0024). Doppeltes Beitreten
-      // desselben Kontos schreibt denselben Schluessel -> genau EIN Mitglied (kein
-      // Self-Duplikat), ganz ohne localStorage-memberId-Logik -- die uid IST die stabile
-      // Identitaet (Reload-Persistenz uebernimmt Firebase-Auth).
-      state.memberId = state.uid;
-      // update (nicht set): schreibt nur Name/Farbe und laesst einen bereits gewaehlten
-      // Avatar (Ticket 0027) unangetastet. Ein erneuter Join (Reload/Wiedereintritt) darf
-      // die eigene Avatar-Wahl nicht ueberschreiben. Das Google-Foto wird bewusst NICHT
-      // geschrieben (nicht Avatar-Quelle).
-      await update(ref(db, `rooms/${room}/members/${state.uid}`), { name, color: state.color });
-      // Ticket 0051 (Raum-Persistenz 1a): nach erfolgreichem Beitritt den zuletzt genutzten
-      // Raum + die Raumliste unter dem NEUEN Top-Level-Pfad users/{uid}/ ablegen -- Basis fuer
-      // Auto-Rejoin (Punkt 1a) und Raum-Switcher (1b). roomName = meta.name falls vorhanden
-      // (Vorbereitung 1b), sonst der Raum-Code. Best-effort: ist die users-Rule (noch) nicht
-      // in der Firebase-Konsole deployt, wird dieser Write DENIED -> Persistenz/Auto-Rejoin
-      // bleiben einfach aus, der Beitritt selbst (rooms/...) ist davon voellig unberuehrt.
-      const roomName = (metaSnap.val() && metaSnap.val().name) || room;
-      try {
-        await update(ref(db, `users/${state.uid}`), {
-          lastRoom: room,
-          [`rooms/${room}/joinedAt`]: serverTimestamp(),
-          [`rooms/${room}/name`]: roomName
-        });
-      } catch (e) { /* users-Rule (noch) nicht deployt -> ohne Effekt, Join unberuehrt */ }
-      // Home zeigen + Live-Listener
-      $('onboarding').classList.remove('open');
-      subscribeRoom(room);
+      await enterRoom(room);                     // members/meta/ownerUid/users-Write + Listener
+      $('onboarding').classList.remove('open');  // Home zeigen (nach erfolgreichem Beitritt)
     } finally {
       joining = false; $('ob-join').disabled = false;
     }
@@ -1958,10 +1994,22 @@
     catch(e){ applyAuthState(null); }                  // Fehler -> defensiv direkt ausloggen
   }
 
-  /* ---- Live-Listener auf den Raum ---- */
+  /* ---- Live-Listener auf den Raum (Ticket 0003; Unsubscribe-Refactor Ticket 0053) ----
+     onValue() liefert je einen Unsubscribe-Detacher zurueck. Vor Ticket 0053 wurden die
+     4 Raum-Listener (members/events/availability/ownerUid) gesetzt, aber NIE abgemeldet --
+     unkritisch, solange subscribeRoom nur einmal beim Boot/Join lief. Fuer den Raum-Wechsel
+     zur Laufzeit (1b) MUESSEN die alten Listener weg, sonst laufen zwei Raeume parallel
+     (doppelte Listener + Daten-Mix). Daher: alle Handles sammeln; unsubscribeRoom() meldet
+     sie ab und leert die Liste. Idempotent (doppelter Aufruf schadet nicht). */
+  let roomUnsubs = [];
+  function unsubscribeRoom(){
+    roomUnsubs.forEach(fn => { try { fn(); } catch(e){ /* schon ab / kein Detacher -> egal */ } });
+    roomUnsubs = [];
+  }
   function subscribeRoom(room){
+    unsubscribeRoom();                           // defensiv: nie zwei Abos auf (alten) Raum
     renderRoomCode();                            // Raum-Code sichtbar machen (Ticket 0003)
-    onValue(ref(db, `rooms/${room}/members`), snap => {
+    roomUnsubs.push(onValue(ref(db, `rooms/${room}/members`), snap => {
       membersCache = snap.val() || {};
       // uid (= Member-Schluessel) als _uid in jeden Member spiegeln -> avatarMarkup kann
       // den uid-geseedeten Default-Avatar fuer JEDEN Member bauen, nicht nur fuer sich
@@ -1978,25 +2026,200 @@
       if (kostenEventId) renderKosten();         // Zahler-/Saldo-Namen live nachziehen (Ticket 0033, Teil 1)
       if (terminEventId) renderTermin();         // Termin-Optionen: Avatare live nachziehen (Ticket 0034)
       renderBesorg();                            // Besorg-Zuweisungen live nachziehen (Ticket 0030)
-    });
-    onValue(ref(db, `rooms/${room}/events`), snap => {
+    }));
+    roomUnsubs.push(onValue(ref(db, `rooms/${room}/events`), snap => {
       lastEvents = snap.val() || {};
       renderEvents(lastEvents);
       refreshOpenDetail();                       // offenes Detail live nachziehen (Ticket 0007)
       renderCalendar();                          // Event-Dots + "Kommende Termine" live (Ticket 0008)
       renderBesorg();                            // Gesamt-Besorgliste live ueber Events-Cache (Ticket 0030)
-    });
+    }));
     // Abwesenheiten/Verfuegbarkeit live: rooms/{room}/availability/{memberId}/{YYYY-MM-DD}
     // = 'weg'|'frei' (Ticket 0008; erweitert 0033 Teil 4; Legacy true == 'weg')
-    onValue(ref(db, `rooms/${room}/availability`), snap => {
+    roomUnsubs.push(onValue(ref(db, `rooms/${room}/availability`), snap => {
       availabilityCache = snap.val() || {};
       renderCalendar();
-    });
+    }));
     // Raum-Owner live (Ticket 0033, Teil 5): bestimmt mit, wer ein Event loeschen darf.
-    onValue(ref(db, `rooms/${room}/ownerUid`), snap => {
+    roomUnsubs.push(onValue(ref(db, `rooms/${room}/ownerUid`), snap => {
       roomOwnerUid = snap.val() || null;
       if (currentDetailId) updateDeleteVisibility(currentDetailId);
+    }));
+  }
+
+  /* ---- Raum-Wechsel zur Laufzeit (Ticket 0053, 1b) ----------------------------------
+     resetRoomState() macht den raum-spezifischen Schnitt VOLLSTAENDIG: erst alle Listener
+     ab (Raum + Module), dann Detail/Sheets/Screens zu, dann ALLE raum-spezifischen Caches
+     leeren und Sichtbares neu zeichnen. Ohne das blieben "Geister-Daten" des alten Raums
+     stehen (Akzeptanz 1+2). Wird von switchRoom() (und im Fehlerfall erneut) genutzt. */
+  function resetRoomState(){
+    // 1) Raum-Listener (members/events/availability/ownerUid) abmelden.
+    unsubscribeRoom();
+    // 2) Detail + alle Modul-Screens schliessen -> deren onValue-Listener (packliste/
+    //    kosten/termin/voting/treffpunkt/reiseplan/flug/buchungen) abmelden + EventId leeren.
+    closePackliste(); closeKosten(); closeTermin(); closeVoting();
+    closeTreffpunkt(); closeReiseplan(); closeFlug(); closeBuchungen();
+    closeSheet();                                // Event-Erstell-/Bearbeiten-Sheet + Backdrop zu
+    closeFlugEdit(); closeBuchEdit();            // Editor-Unterscreens zu
+    // Alle Slide-in-Screens + Detail schliessen -> sichtbar zurueck auf die Home-Ansicht.
+    document.querySelectorAll('.screen.open').forEach(s => s.classList.remove('open'));
+    if (detail) detail.classList.remove('open');
+    // 3) Raum-spezifische Daten-Caches leeren -> kein Geister-Rendering aus dem alten Raum.
+    membersCache = {}; lastEvents = {}; roomOwnerUid = null; availabilityCache = {};
+    currentDetailId = null;
+    packItems = {}; kostenItems = {}; terminData = {}; votingData = {};
+    tpData = null; rpData = {}; flugData = {}; buchData = {};
+    // Event-Erstell-/Bearbeiten-State (Teilnehmer-Auswahl haengt am alten membersCache).
+    editId = null;
+    crState.selected = new Set(); crState.locLat = null; crState.locLon = null;
+    // Sichtbares neu zeichnen -> leere Listen statt alter Raum-Reste (sofort, vor neuem Sub).
+    renderEvents(lastEvents);
+    renderCrew();
+    renderCalendar();
+    renderBesorg();
+  }
+
+  // Raum-Wechsel OHNE Reload (Ziel 2). Reihenfolge ist kritisch:
+  //   a) resetRoomState() -> ALLE alten Listener weg + raum-spezifische Caches/UI leer
+  //   b–e) enterRoom() -> state.room, members-Write, meta/ownerUid (falls neu), users/-Write
+  //        (lastRoom/rooms) UND frische Listener -- exakt der bestehende join-Pfad
+  //   f) Detail/Sheets sind via resetRoomState bereits zu -> Home-Ansicht des neuen Raums.
+  // Fehlerfall: zurueck in den vorherigen Raum (oder Onboarding); kein halb-gewechselter
+  // Zustand, kein Crash (Fallback laut Ticket).
+  let switching = false;
+  async function switchRoom(nextRoom){
+    if (switching) return;                        // laufenden Wechsel nicht ueberholen (Race-Guard,
+                                                  // analog joining; sonst doppelte Listener bei Doppel-Tap)
+    const next = sanitizeRoom(nextRoom);
+    if (!next){ toast('Ungueltiger Raum-Code'); return; }
+    if (!state.uid){ showSignIn(); return; }      // ohne Anmeldung kein Wechsel (Auth-Gate)
+    const prevRoom = state.room;
+    closeRoomSwitch();                            // Menue zu (egal ob Erfolg/Fehler)
+    if (next === prevRoom) return;                // schon in diesem Raum -> nichts zu tun
+    switching = true;
+    resetRoomState();                             // a) sauberer Schnitt: alter Raum komplett weg
+    try {
+      await enterRoom(next);                      // b–e) wie der join-Pfad (inkl. frischer Listener)
+      // Sprung (Ticket 0055): nach erfolgreichem LAUFZEIT-Wechsel die Events-/"Geplant"-Ansicht
+      // zeigen. Nutzt den bestehenden Tabbar-Click-Handler (data-view="events"), statt Tab-State
+      // von Hand zu setzen. AUSSCHLIESSLICH hier in switchRoom (NACH erfolgreichem await), NICHT
+      // in enterRoom/join -> Boot/Auto-Rejoin behaelt sein 1a-Verhalten (kein Sprung beim Boot).
+      document.querySelector('.tabbar .tab[data-view="events"]')?.click();
+    } catch (e) {
+      // Fallback: Wechsel gescheitert -> kein halb-gewechselter Zustand.
+      toast('Raum-Wechsel fehlgeschlagen');
+      resetRoomState();
+      if (prevRoom){
+        try { await enterRoom(prevRoom); return; }  // sauber in den vorherigen Raum zurueck
+        catch (e2) { resetRoomState(); }            // auch das schlug fehl -> Onboarding unten
+      }
+      state.room = null; state.color = null; state.memberId = state.uid;
+      const u = new URL(location.href); u.searchParams.delete('room');
+      history.replaceState(null, '', u);
+      showOnboarding();
+    } finally {
+      switching = false;
+    }
+  }
+
+  // "Raum verlassen" (Ziel 3): entfernt NUR den eigenen Listen-Eintrag
+  // users/{uid}/rooms/{room} -- KEIN Mitglieder-Austritt (rooms/{room}/members/{uid} bleibt;
+  // echter Austritt ist bewusst nicht Teil von 1b). Wird der AKTUELLE Raum verlassen -> in
+  // einen anderen Listen-Raum wechseln, sonst Onboarding. Best-effort: ohne users-Rule
+  // bleibt der Listen-Eintrag nur lokal sichtbar, die UI-Logik laeuft trotzdem sauber.
+  async function leaveRoom(room){
+    const r = sanitizeRoom(room) || state.room;
+    if (!r || !state.uid) return;
+    try {
+      await remove(ref(db, `users/${state.uid}/rooms/${r}`));
+      // lastRoom nachziehen, falls es auf den verlassenen Raum zeigt -> kein Auto-Rejoin dorthin.
+      const snap = await get(ref(db, `users/${state.uid}/lastRoom`));
+      if (sanitizeRoom(snap.val()) === r){ await remove(ref(db, `users/${state.uid}/lastRoom`)); }
+    } catch (e) { /* users-Rule nicht deployt -> Liste lebt nur lokal; UI-Logik laeuft weiter */ }
+    if (r === state.room){
+      // aktiven Raum verlassen -> in einen anderen Listen-Raum wechseln, sonst Onboarding.
+      let others = [];
+      try {
+        const rs = await get(ref(db, `users/${state.uid}/rooms`));
+        others = Object.keys(rs.val() || {}).map(sanitizeRoom).filter(x => x && x !== r);
+      } catch (e) { others = []; }
+      if (others.length){
+        await switchRoom(others[0]);
+      } else {
+        resetRoomState();
+        state.room = null; state.memberId = state.uid;
+        const u = new URL(location.href); u.searchParams.delete('room');
+        history.replaceState(null, '', u);
+        closeRoomSwitch();
+        showOnboarding();
+      }
+    } else {
+      renderRoomSwitchList();                     // nicht-aktiven Raum entfernt -> Liste neu zeichnen
+    }
+  }
+
+  /* ---- Raum-Wechsler-UI (Ticket 0053, Ziele 3+4) ----
+     Liste der eigenen Raeume aus users/{uid}/rooms (1a-Datenbasis), Beitreten per Code,
+     Verlassen je Eintrag. Schlicht im App-Look (Slide-in-Screen wie die Module). */
+  function buildRoomRow(code, label, isCurrent){
+    const row = document.createElement('div');
+    row.className = 'frow rs-row' + (isCurrent ? ' rs-current' : '');
+    row.dataset.room = code;
+    const pick = document.createElement('button');
+    pick.type = 'button'; pick.className = 'rs-pick';
+    const nm = document.createElement('span'); nm.className = 'rs-name';
+    nm.textContent = label;                       // textContent -> kein HTML aus RTDB-Daten (XSS)
+    pick.appendChild(nm);
+    if (isCurrent){
+      const tag = document.createElement('span'); tag.className = 'rs-cur-tag';
+      tag.textContent = 'Aktuell'; pick.appendChild(tag);
+    }
+    pick.addEventListener('click', () => { if (isCurrent) closeRoomSwitch(); else switchRoom(code); });
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'rs-leave';
+    del.setAttribute('aria-label', 'Raum verlassen'); del.textContent = 'Verlassen';
+    del.addEventListener('click', e => { e.stopPropagation(); leaveRoom(code); });
+    row.appendChild(pick); row.appendChild(del);
+    return row;
+  }
+  function renderRoomSwitchList(){
+    const box = $('rs-list'), empty = $('rs-empty');
+    if (!box) return;
+    box.innerHTML = '';
+    const showEmpty = () => { if (empty) empty.style.display = ''; };
+    const hideEmpty = () => { if (empty) empty.style.display = 'none'; };
+    if (!state.uid){ showEmpty(); return; }
+    // Liste aus users/{uid}/rooms. Best-effort: ohne users-Rule faellt der Read aus ->
+    // nur den aktuellen Raum (lokal) zeigen, statt eine leere Liste vorzutaeuschen.
+    get(ref(db, `users/${state.uid}/rooms`)).then(snap => {
+      const rooms = snap.val() || {};
+      const codes = Object.keys(rooms).map(sanitizeRoom).filter(Boolean);
+      if (state.room && !codes.includes(state.room)) codes.push(state.room);  // aktuellen Raum sicher mit dabei
+      // Reihenfolge: aktueller Raum zuerst, Rest alphabetisch (stabil/lesbar).
+      codes.sort((a, b) => (a === state.room ? -1 : b === state.room ? 1 : (a < b ? -1 : 1)));
+      box.innerHTML = '';
+      if (!codes.length){ showEmpty(); return; }
+      hideEmpty();
+      codes.forEach(code => {
+        const meta = rooms[code];
+        const label = (meta && typeof meta === 'object' && meta.name) ? String(meta.name) : code;
+        box.appendChild(buildRoomRow(code, label, code === state.room));
+      });
+    }).catch(() => {
+      box.innerHTML = '';
+      if (state.room){ hideEmpty(); box.appendChild(buildRoomRow(state.room, state.room, true)); }
+      else showEmpty();
     });
+  }
+  function openRoomSwitch(){
+    if (!state.uid) return;                        // nur fuer angemeldete Nutzer relevant
+    const sc = $('roomswitch'); if (!sc) return;
+    const inp = $('rs-room'); if (inp) inp.value = '';
+    renderRoomSwitchList();
+    sc.scrollTop = 0; sc.classList.add('open');
+  }
+  function closeRoomSwitch(){
+    const sc = $('roomswitch'); if (sc) sc.classList.remove('open');
   }
 
   /* ---- Raum-Code anzeigen + teilen (Ticket 0003) ---- */
@@ -5541,6 +5764,23 @@
   $('ob-join').addEventListener('click', join);
   $('ob-room').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });   // Enter -> beitreten
   $('rc-share').addEventListener('click', shareRoom);   // Raum teilen (Ticket 0003)
+
+  // Raum-Wechsler (Ticket 0053, 1b): Tap/Tastatur auf den Raum-Code oeffnet das Menue.
+  const rcInfo = $('rc-info');
+  if (rcInfo){
+    rcInfo.addEventListener('click', openRoomSwitch);
+    rcInfo.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openRoomSwitch(); } });
+  }
+  const rsBack = $('rs-back'); if (rsBack) rsBack.addEventListener('click', closeRoomSwitch);
+  const rsRoomEl = $('rs-room'), rsJoinEl = $('rs-join');
+  const rsTryJoin = () => { const v = sanitizeRoom(rsRoomEl ? rsRoomEl.value : ''); if (v) switchRoom(v); };
+  if (rsJoinEl) rsJoinEl.addEventListener('click', rsTryJoin);
+  if (rsRoomEl) rsRoomEl.addEventListener('keydown', e => { if (e.key === 'Enter') rsTryJoin(); });
+  // Test-Belege (nur localhost, wie window.__cp.*): Switcher-Logik + Listener-Zaehler.
+  if (DEBUG) Object.assign(window.__cp, {
+    switchRoom, leaveRoom, enterRoom, resetRoomState, subscribeRoom, unsubscribeRoom,
+    openRoomSwitch, renderRoomSwitchList, getRoomUnsubCount: () => roomUnsubs.length
+  });
 
   /* ---- Boot: Auth-Gate (Ticket 0024) ----
      onAuthStateChanged ist die Quelle des Anmelde-Zustands -> sofort registrieren
