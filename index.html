@@ -596,6 +596,11 @@
   .ob-join { width:100%; margin-top:14px; padding:15px; border-radius:var(--r-pill); background:var(--accent); border:none; color:#fff; font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; box-shadow:0 4px 16px rgba(94,92,230,0.4); transition:transform 0.15s var(--ease); }
   .ob-join:active { transform:scale(0.97); }
   .ob-hint { font-size:13px; color:var(--label-2); text-align:center; margin-top:14px; letter-spacing:-0.1px; line-height:1.4; }
+  /* Ein-Klick "Neuen Raum erstellen" (Ticket 0057): sekundaerer Stil, klar getrennt vom
+     primaeren accent-"Beitreten" -> zwei sichtbar unterschiedliche Aktionen (Ziel 3). */
+  .ob-or { text-align:center; color:var(--label-2); font-size:13px; margin:14px 0 4px; letter-spacing:-0.1px; }
+  .ob-create { width:100%; padding:14px; border-radius:var(--r-pill); background:var(--card-2); border:0.5px solid var(--card-border); color:var(--accent-text); font-size:16px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:transform 0.15s var(--ease); }
+  .ob-create:active { transform:scale(0.97); }
   /* Raum-Wechsler (Ticket 0053): Raum-Code antippbar + Liste/Beitreten/Verlassen-Screen. */
   #room-code .rc-info { cursor:pointer; -webkit-tap-highlight-color:transparent; }
   #room-code .rc-info:active { opacity:0.6; }
@@ -680,10 +685,11 @@
         <div class="ob-label" id="ob-room-label" style="display:none"></div>
         <div class="ob-field" id="ob-room-wrap">
           <input id="ob-room" class="ob-input" placeholder="Raum-Code" autocomplete="off" autocapitalize="characters" maxlength="12">
-          <button class="ob-newroom" id="ob-newroom" type="button">Neu</button>
         </div>
         <button class="ob-join" id="ob-join" type="button">Beitreten</button>
-        <div class="ob-hint">Raum-Code eingeben und beitreten -- oder mit "Neu" einen eigenen Raum erstellen und den Code teilen.</div>
+        <div class="ob-or">oder</div>
+        <button class="ob-create" id="ob-create" type="button">Neuen Raum erstellen</button>
+        <div class="ob-hint">Hast du einen Code? Eingeben und beitreten. Sonst einen neuen Raum erstellen -- der Code wird automatisch erzeugt und ist danach teilbar.</div>
       </div>
     </div>
   </div>
@@ -1295,6 +1301,11 @@
       <input id="rs-room" class="ob-input" placeholder="Raum-Code" autocomplete="off" autocapitalize="characters" maxlength="12">
       <button class="ob-newroom" id="rs-join" type="button">Beitreten</button>
     </div>
+    <!-- Ein-Klick "Neuen Raum erstellen" (Ticket 0057, Ziel 2+3): klar getrennt vom Beitreten -->
+    <div class="section-label">Neuen Raum erstellen</div>
+    <div style="margin:0 18px">
+      <button class="ob-create" id="rs-create" type="button">Neuen Raum erstellen</button>
+    </div>
     <div class="bottom-pad"></div>
   </div>
 
@@ -1592,10 +1603,30 @@
     box.textContent = ini;
   }
   window.cpAvatarFail = cpAvatarFail;
+  // Lesbarer Raum-Code (Ticket 0057, Ziel 1): Laenge 6, Alphabet OHNE verwechselbare Zeichen
+  // (kein 0/O, kein 1/I/L) -- alle erlaubten Zeichen liegen in [A-Z0-9], daher ueberlebt der
+  // Code sanitizeRoom unveraendert (genRoomCode() === sanitizeRoom(genRoomCode())). Reines Format,
+  // OHNE Kollisions-Check -- den macht generateRoomCode() drumherum.
   function genRoomCode(){
-    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
     let s = ''; for (let i=0;i<6;i++) s += A[Math.floor(Math.random()*A.length)];
     return s;
+  }
+  // Kollisions-SICHERER Generator (Ticket 0057, Ziel 1): erzeugt einen Kandidaten und prueft per
+  // meta-Read, ob der Raum schon existiert (rooms/{code}/meta ist fuer auth!=null lesbar, P6).
+  // Existiert er -> neuer Kandidat (max. 5 Versuche), sonst Fehler statt Endlosschleife. So landet
+  // ein "Neuen Raum erstellen"-Klick NIE versehentlich in einem fremden bestehenden Raum.
+  // Der optionale gen-Parameter ist NUR ein Test-Seam (Container-Gate, window.__cp), damit eine
+  // Kollision deterministisch forcierbar ist; die Produktion ruft generateRoomCode() ohne Argument
+  // auf und nutzt damit immer genRoomCode.
+  async function generateRoomCode(gen){
+    const make = (typeof gen === 'function') ? gen : genRoomCode;
+    for (let i = 0; i < 5; i++){
+      const code = make();
+      const snap = await get(ref(db, `rooms/${code}/meta`));   // P6: meta fuer auth!=null lesbar
+      if (!snap.exists()) return code;                          // freier Code gefunden -> verwenden
+    }
+    throw new Error('no-free-room-code');                       // Obergrenze -> kein Beitritt zu fremdem Raum
   }
   function sanitizeRoom(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12); }
   function urlRoom(){ return sanitizeRoom(new URLSearchParams(location.search).get('room')); }
@@ -1676,13 +1707,58 @@
     if (joining) return;                       // Doppel-Submit (Doppelklick) abfangen
     if (!state.uid){ showSignIn(); return; }    // ohne Anmeldung kein Beitritt (Auth-Gate, 0024)
     let room = urlRoom() || sanitizeRoom($('ob-room').value);
-    if (!room){ room = genRoomCode(); }
+    // "Beitreten" ist ausschliesslich der JOIN-Pfad (Code-Eingabe fuer einen BESTEHENDEN Raum,
+    // Ticket 0057 Ziel 3) -- ohne Code NICHT heimlich einen Raum erstellen, sondern auf den klar
+    // getrennten "Neuen Raum erstellen"-Knopf verweisen.
+    if (!room){ toast('Bitte Raum-Code eingeben oder einen neuen Raum erstellen'); return; }
     joining = true; $('ob-join').disabled = true;
     try {
       await enterRoom(room);                     // members/meta/ownerUid/users-Write + Listener
       $('onboarding').classList.remove('open');  // Home zeigen (nach erfolgreichem Beitritt)
     } finally {
       joining = false; $('ob-join').disabled = false;
+    }
+  }
+
+  // EIN-KLICK-ERSTELLUNG (Ticket 0057, Ziel 2): erzeugt einen NEUEN Raum mit Auto-Code
+  // (kollisions-sicher, kein Ausdenken, kein Eingabe-Schritt) und landet den Nutzer DIREKT drin.
+  // Nutzt denselben Beitritts-Kern (enterRoom) wie join/switchRoom -> meta+ownerUid werden beim
+  // neuen Code angelegt, der Ersteller ist ownerUid + Member, Listener frisch. Funktioniert an
+  // beiden Einstiegen (Onboarding: state.room==null; Switcher: bereits in einem Raum -> erst
+  // sauberer Schnitt wie bei switchRoom). Fehlerfall: kein halb-erstellter/halb-gewechselter
+  // Zustand, kein Crash (Fallback laut Ticket).
+  let roomCreating = false;
+  async function createRoom(){
+    if (roomCreating) return;                     // Doppel-Klick-Guard (analog joining/switching)
+    if (!state.uid){ showSignIn(); return; }       // ohne Anmeldung kein Erstellen (Auth-Gate)
+    roomCreating = true;
+    const fromRoom = state.room;                   // null am Onboarding, gesetzt im Switcher
+    try {
+      let code;
+      try {
+        code = await generateRoomCode();           // Auto-Code inkl. Kollisions-Check (Ziel 1)
+      } catch (e) {
+        toast('Konnte keinen freien Raum-Code erzeugen, bitte erneut versuchen');
+        return;                                    // kein Beitritt zu fremdem Raum, kein Crash
+      }
+      if (fromRoom) resetRoomState();              // Switcher-Pfad: alter Raum komplett weg (wie switchRoom)
+      try {
+        await enterRoom(code);                     // erstellt Raum (meta+ownerUid) + tritt bei + Listener
+      } catch (e) {
+        toast('Raum erstellen fehlgeschlagen');
+        if (fromRoom){                             // sauber in den vorherigen Raum zurueck
+          resetRoomState();
+          try { await enterRoom(fromRoom); } catch (e2) { resetRoomState(); }
+        }
+        return;
+      }
+      // direkt in den neuen Raum: beide Einstiege schliessen, Events-/"Geplant"-Ansicht zeigen
+      // (gleicher Sprung wie switchRoom -> Home/Events sichtbar, Code ueber renderRoomCode teilbar).
+      $('onboarding').classList.remove('open');
+      closeRoomSwitch();
+      document.querySelector('.tabbar .tab[data-view="events"]')?.click();
+    } finally {
+      roomCreating = false;
     }
   }
 
@@ -5760,7 +5836,7 @@
   $('signout-btn').addEventListener('click', doSignOut);        // Abmelden
   // (Ticket 0028: das Profilbild-Upload-Wiring aus 0026 ist entfernt -- der Avatar wird
   // ausschliesslich ueber die Galerie unten gewaehlt.)
-  $('ob-newroom').addEventListener('click', () => { $('ob-room').value = genRoomCode(); });
+  $('ob-create').addEventListener('click', createRoom);   // Ein-Klick: neuen Raum erstellen (Ticket 0057)
   $('ob-join').addEventListener('click', join);
   $('ob-room').addEventListener('keydown', e => { if (e.key === 'Enter') join(); });   // Enter -> beitreten
   $('rc-share').addEventListener('click', shareRoom);   // Raum teilen (Ticket 0003)
@@ -5776,10 +5852,16 @@
   const rsTryJoin = () => { const v = sanitizeRoom(rsRoomEl ? rsRoomEl.value : ''); if (v) switchRoom(v); };
   if (rsJoinEl) rsJoinEl.addEventListener('click', rsTryJoin);
   if (rsRoomEl) rsRoomEl.addEventListener('keydown', e => { if (e.key === 'Enter') rsTryJoin(); });
+  const rsCreateEl = $('rs-create');
+  if (rsCreateEl) rsCreateEl.addEventListener('click', createRoom);   // Ein-Klick: neuen Raum erstellen (Ticket 0057)
   // Test-Belege (nur localhost, wie window.__cp.*): Switcher-Logik + Listener-Zaehler.
   if (DEBUG) Object.assign(window.__cp, {
     switchRoom, leaveRoom, enterRoom, resetRoomState, subscribeRoom, unsubscribeRoom,
-    openRoomSwitch, renderRoomSwitchList, getRoomUnsubCount: () => roomUnsubs.length
+    openRoomSwitch, renderRoomSwitchList, getRoomUnsubCount: () => roomUnsubs.length,
+    // Ticket 0057, Ziel 5 (nur localhost): Generator + Erstell-Pfad fuer den Container-Gate.
+    // generateRoomCode(gen?) prueft Format UND Kollision; gen ist ein optionaler Test-Seam,
+    // um eine Kollision deterministisch zu forcieren. genRoomCode = reines Format (sync).
+    generateRoomCode, genRoomCode, createRoom
   });
 
   /* ---- Boot: Auth-Gate (Ticket 0024) ----
